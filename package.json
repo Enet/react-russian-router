@@ -1,0 +1,41 @@
+{
+  "name": "react-russian-router",
+  "version": "0.0.1",
+  "description": "Universal javascript react-router for browser environment",
+  "main": "lib/index.js",
+  "author": "Stepan Zhevak <enet@protonmail.ch> (https://zhevak.name)",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "private": false,
+  "keywords": [
+    "react",
+    "russian",
+    "router",
+    "route",
+    "routing",
+    "history",
+    "spa"
+  ],
+  "peerDependencies": {
+    "react": "*"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-react": "^6.24.1",
+    "jest": "^21.2.1",
+    "react": "^16.0.0",
+    "webpack": "^3.9.1"
+  },
+  "dependencies": {
+    "prop-types": "^15.6.0",
+    "browser-russian-router": "file:./node_modules/browser-russian-router"
+  },
+  "scripts": {
+    "clean": "rm -rf lib dist",
+    "bundle": "webpack --output-filename=dist/react-russian-router.js",
+    "babel": "babel src --out-dir lib",
+    "test": "",
+    "prepublish": "npm test && npm run clean && npm run babel && npm run bundle"
+  }
+}
