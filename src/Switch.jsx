@@ -5,6 +5,10 @@ import BrowserRussianRouter from 'browser-russian-router';
 export default class Switch extends React.PureComponent {
     render () {
         const {matchObjects} = this.state;
+        return this.renderMatchObjects(matchObjects);
+    }
+
+    renderMatchObjects (matchObjects) {
         const {renderPayload, renderError} = this.props;
 
         try {
