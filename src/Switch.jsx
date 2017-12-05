@@ -9,13 +9,13 @@ export default class Switch extends React.PureComponent {
     }
 
     renderMatchObjects (matchObjects) {
-        const {renderPayload, renderError} = this.props;
+        const {renderContent, renderError} = this.props;
 
         try {
-            if (typeof renderPayload === 'function') {
-                return renderPayload(matchObjects);
+            if (typeof renderContent === 'function') {
+                return renderContent(matchObjects);
             } else {
-                return this.renderPayload(matchObjects);
+                return this.renderContent(matchObjects);
             }
         } catch (error) {
             if (typeof renderError === 'function') {
@@ -31,11 +31,15 @@ export default class Switch extends React.PureComponent {
         return null;
     }
 
-    renderPayload (matchObjects) {
+    renderContent (matchObjects) {
         const matchObject = matchObjects[0];
         if (!matchObject) {
             throw 'Switch cannot render matchObject!';
         }
+        return this.renderPayload(matchObject);
+    }
+
+    renderPayload (matchObject) {
         const Payload = matchObject.payload;
         if (Payload instanceof React.Component || typeof Payload === 'function') {
             return <Payload matchObject={matchObject} />
@@ -73,6 +77,6 @@ Switch.contextTypes = {
 };
 
 Switch.propTypes = {
-    renderPayload: PropTypes.func,
+    renderContent: PropTypes.func,
     renderError: PropTypes.func
 };

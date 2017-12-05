@@ -7,18 +7,25 @@ export default class TransitionSwitch extends Switch {
         super(...arguments);
         this.state = {
             matchObjects: [],
-            hiddenObjects: []
+            matchKeys: [],
+            hiddenObjects: [],
+            hiddenKeys: []
         };
     }
 
     render () {
-        const {matchObjects, hiddenObjects} = this.state;
-        const rawChildren = [
-            this.renderMatchObjects(hiddenObjects.length ? hiddenObjects : [{}]),
-            this.renderMatchObjects(matchObjects)
-        ];
+        const {matchObjects, matchKeys, hiddenObjects, hiddenKeys} = this.state;
+        const rawHiddenChildren = this.renderMatchObjects(hiddenObjects);
+        const rawMatchChildren = this.renderMatchObjects(matchObjects);
+        const processedHiddenChildren = this.renderProcessedChildren(rawHiddenChildren, hiddenKeys);
+        const processedMatchChildren = this.renderProcessedChildren(rawMatchChildren, matchKeys);
 
+        return processedHiddenChildren.concat(processedMatchChildren);
+    }
+
+    renderProcessedChildren (rawChildren, rawKeys) {
         const processedChildren = [];
+
         React.Children.forEach(rawChildren, (child, c) => {
             if (!React.isValidElement(child)) {
                 return processedChildren.push(child);
@@ -41,10 +48,10 @@ export default class TransitionSwitch extends Switch {
                 !childPrototype.componentDidLeave) {
                 return processedChildren.push(child);
             }
-            const routeName = child.props.matchObject.name;
+            const objectKey = rawKeys[c];
             child = React.cloneElement(child, {
-                ref: this._onChildRef.bind(this, routeName),
-                key: routeName
+                ref: (component) => this._onChildRef(objectKey, component),
+                key: objectKey
             });
             return processedChildren.push(child);
         });
@@ -52,111 +59,185 @@ export default class TransitionSwitch extends Switch {
         return processedChildren;
     }
 
+    renderContent (matchObjects) {
+        if (matchObjects === this.state.matchObjects && !matchObjects.length) {
+            throw 'Switch cannot render matchObjects!';
+        }
+        return matchObjects.map((matchObject) => this.renderPayload(matchObject));
+    }
+
     componentWillMount () {
-        this._onChildRef = this._onChildRef.bind(this);
         this._isAnimationEnabled = this.props.transitionOnAppear;
         this._componentRefs = {};
         this._componentStates = {};
+        this._componentAnimationFrames = {};
+        this._routeIds = {};
         super.componentWillMount();
     }
 
+    componentDidMount () {
+        super.componentDidMount(...arguments);
+        this._animationTimer = setTimeout(this._onAnimationTimerTick.bind(this));
+    }
+
     componentWillUnmount () {
-        super.componentWillUnmount();
-        cancelAnimationFrame(this._animationFrame);
+        const componentAnimationFrames = this._componentAnimationFrames;
+        for (let objectKey in componentAnimationFrames) {
+            cancelAnimationFrame(componentAnimationFrames[objectKey]);
+        }
+
+        const componentStates = this._componentStates;
+        for (let objectKey in componentStates) {
+            const componentState = componentStates[objectKey];
+            if (componentState === 'enter') {
+                this._onEnterComplete(objectKey);
+            } else if (componentState === 'leave') {
+                this._onLeaveComplete(objectKey);
+            }
+        }
+
         clearTimeout(this._animationTimer);
+        super.componentWillUnmount();
     }
 
-    _onAnimationTimerTick () {
-        this._isAnimationEnabled = true;
+    _getComponentRef (objectKey) {
+        return this._componentRefs[objectKey];
     }
 
-    _onAnimationFrame (routeName) {
-        const component = this._componentRefs[routeName];
-        if (component && component.componentWillEnter) {
-            component.componentWillEnter(this._onEnterComplete.bind(this, routeName));
-            this._componentStates[routeName] = 'enter';
-        }
-    }
-
-    _onEnterComplete (routeName) {
-        const component = this._componentRefs[routeName];
-        if (component && component.componentDidEnter) {
-            component.componentDidEnter();
-        }
-        this._componentStates[routeName] = null;
-    }
-
-    _onLeaveComplete (routeName) {
-        const component = this._componentRefs[routeName];
-        if (component && component.componentDidLeave) {
-            component.componentDidLeave();
-        }
-        this._componentStates[routeName] = null;
-
-        this._componentRefs[routeName] = null;
-        const hiddenObjects = this.state.hiddenObjects.filter((hiddenObject) => {
-            return hiddenObject.name !== routeName;
-        });
-        this.setState({hiddenObjects});
-    }
-
-    _onChildRef (routeName, component) {
-        if (!component) {
-            return;
-        }
-
-        const prevComponent = this._componentRefs[routeName];
-        this._componentRefs[routeName] = component;
-        if (prevComponent) {
-            return;
-        }
-        if (!this._isAnimationEnabled) {
-            this._animationTimer = setTimeout(this._onAnimationTimerTick.bind(this));
-            return;
-        }
-
-        if (this.props.transitionOnAppear) {
-            this._animationFrame = requestAnimationFrame(this._onAnimationFrame.bind(this, routeName));
-        } else {
-            this._onAnimationFrame(routeName);
-        }
+    _setComponentRef (objectKey, component) {
+        this._componentRefs[objectKey] = component;
     }
 
     _onUriChange () {
         const {router} = this.context;
-        const matchObjects = router.getMatchObjects();
-        const matchObjectKeys = matchObjects.map((matchObject) => matchObject.name);
         const prevMatchObjects = this.state.matchObjects;
+        const prevMatchKeys = this.state.matchKeys;
         const prevHiddenObjects = this.state.hiddenObjects;
-        const hiddenObjects = [];
+        const prevHiddenKeys = this.state.hiddenKeys;
+        const matchObjects = router.getMatchObjects();
+        const matchKeys = [];
+        const hiddenObjects = prevHiddenObjects.slice();
+        const hiddenKeys = prevHiddenKeys.slice();
 
-        prevHiddenObjects.forEach((prevHiddenObject) => {
-            const routeName = prevHiddenObject.name;
-            const index = matchObjectKeys.indexOf(routeName);
-            if (index === -1) {
-                hiddenObjects.push(prevHiddenObject);
+        matchObjects.forEach((matchObject) => {
+            const routeName = matchObject.name;
+            if (!this._routeIds[routeName]) {
+                this._routeIds[routeName] = 1;
+            }
+            const objectIndex = prevMatchObjects.findIndex((prevMatchObject) => prevMatchObject.name === routeName);
+            if (objectIndex === -1) {
+                matchKeys.push(routeName + '~' + this._routeIds[routeName]++);
             } else {
-                const component = this._componentRefs[routeName];
-                component && component.componentDidLeave && component.componentDidLeave();
-                component && component.componentWillEnter && component.componentWillEnter(this._onEnterComplete.bind(this, routeName));
+                matchKeys.push(prevMatchKeys[objectIndex]);
             }
         });
-        prevMatchObjects.forEach((prevMatchObject) => {
+
+        prevMatchObjects.forEach((prevMatchObject, p) => {
             const routeName = prevMatchObject.name;
-            const index = matchObjectKeys.indexOf(routeName);
-            if (index === -1) {
+            const objectKey = prevMatchKeys[p];
+            const objectIndex = matchKeys.indexOf(objectKey);
+            if (objectIndex === -1) {
                 hiddenObjects.push(prevMatchObject);
-                const component = this._componentRefs[routeName];
-                if (component && component.componentWillLeave) {
-                    this._componentStates[routeName] = 'leave';
-                    component.componentWillLeave(this._onLeaveComplete.bind(this, routeName));
+                hiddenKeys.push(objectKey);
+
+                const component = this._getComponentRef(objectKey);
+                if (!component) {
+                    return;
+                }
+                this._onEnterComplete(objectKey);
+                component.componentBeforeLeave && component.componentBeforeLeave();
+                if (component.componentWillLeave) {
+                    this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onLeaveStart.bind(this, objectKey));
+                } else {
+                    this._onLeaveComplete(objectKey);
                 }
             }
         });
 
         this.setState({
             matchObjects,
-            hiddenObjects
+            matchKeys,
+            hiddenObjects,
+            hiddenKeys
+        });
+    }
+
+    _onChildRef (objectKey, component) {
+        if (!component) {
+            return;
+        }
+
+        const prevComponent = this._getComponentRef(objectKey);
+        this._setComponentRef(objectKey, component);
+        if (prevComponent) {
+            return;
+        }
+
+        if (!this._isAnimationEnabled) {
+            return;
+        }
+
+        component.componentBeforeEnter && component.componentBeforeEnter();
+        if (component.componentWillEnter) {
+            this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onEnterStart.bind(this, objectKey));
+        } else if (component.componentDidEnter) {
+            component.componentDidEnter();
+        }
+    }
+
+    _onAnimationTimerTick () {
+        this._isAnimationEnabled = true;
+    }
+
+    _onEnterStart (objectKey) {
+        const component = this._getComponentRef(objectKey);
+        if (!component) {
+            return;
+        }
+        this._componentAnimationFrames[objectKey] = null;
+        this._componentStates[objectKey] = 'enter';
+        component.componentWillEnter(this._onEnterComplete.bind(this, objectKey));
+    }
+
+    _onEnterComplete (objectKey) {
+        const component = this._getComponentRef(objectKey);
+        if (!component) {
+            return;
+        }
+        if (this._componentStates[objectKey] !== 'enter') {
+            return;
+        }
+        this._componentStates[objectKey] = null;
+        component.componentDidEnter && component.componentDidEnter();
+    }
+
+    _onLeaveStart (objectKey) {
+        const component = this._getComponentRef(objectKey);
+        if (!component) {
+            return;
+        }
+        this._componentAnimationFrames[objectKey] = null;
+        this._componentStates[objectKey] = 'leave';
+        component.componentWillLeave(this._onLeaveComplete.bind(this, objectKey));
+    }
+
+    _onLeaveComplete (objectKey) {
+        const component = this._getComponentRef(objectKey);
+        if (!component) {
+            return;
+        }
+        this._componentStates[objectKey] = null;
+        component.componentDidLeave && component.componentDidLeave();
+
+        this._setComponentRef(objectKey, null);
+        const objectIndex = this.state.hiddenKeys.indexOf(objectKey);
+        const hiddenObjects = this.state.hiddenObjects.slice();
+        const hiddenKeys = this.state.hiddenKeys.slice();
+        hiddenObjects.splice(objectIndex, 1);
+        hiddenKeys.splice(objectIndex, 1);
+        this.setState({
+            hiddenObjects,
+            hiddenKeys
         });
     }
 }
