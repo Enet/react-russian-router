@@ -138,21 +138,21 @@ export default class TransitionSwitch extends Switch {
             const routeName = prevMatchObject.name;
             const objectKey = prevMatchKeys[p];
             const objectIndex = matchKeys.indexOf(objectKey);
-            if (objectIndex === -1) {
-                hiddenObjects.push(prevMatchObject);
-                hiddenKeys.push(objectKey);
-
-                const component = this._getComponentRef(objectKey);
-                if (!component) {
-                    return;
-                }
-                this._onEnterComplete(objectKey);
-                component.componentBeforeLeave && component.componentBeforeLeave();
-                if (component.componentWillLeave) {
-                    this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onLeaveStart.bind(this, objectKey));
-                } else {
-                    this._onLeaveComplete(objectKey);
-                }
+            if (objectIndex !== -1) {
+                return;
+            }
+            const component = this._getComponentRef(objectKey);
+            if (!component) {
+                return;
+            }
+            hiddenObjects.push(prevMatchObject);
+            hiddenKeys.push(objectKey);
+            this._onEnterComplete(objectKey);
+            component.componentBeforeLeave && component.componentBeforeLeave();
+            if (component.componentWillLeave) {
+                this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onLeaveStart.bind(this, objectKey));
+            } else {
+                this._onLeaveComplete(objectKey);
             }
         });
 
