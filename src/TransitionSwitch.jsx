@@ -31,14 +31,10 @@ export default class TransitionSwitch extends Switch {
                 return processedChildren.push(child);
             }
             const childPrototype = child.type.prototype;
-            if (!childPrototype.isReactComponent) {
-                return processedChildren.push(child);
-            }
-            if (!child.props.matchObject || !child.props.matchObject.name) {
-                child = React.cloneElement(child, {
-                    key: 'ReactRussianRouter/TransitionSwitch/' + c
-                });
-                return processedChildren.push(child);
+            if (!childPrototype.isReactComponent ||
+                !child.props.matchObject ||
+                !child.props.matchObject.name) {
+                return processedChildren.push(React.Children.map(child, (c) => c));
             }
             if (!childPrototype.componentBeforeEnter &&
                 !childPrototype.componentWillEnter &&
@@ -46,7 +42,7 @@ export default class TransitionSwitch extends Switch {
                 !childPrototype.componentBeforeLeave &&
                 !childPrototype.componentWillLeave &&
                 !childPrototype.componentDidLeave) {
-                return processedChildren.push(child);
+                return processedChildren.push(React.Children.map(child, (c) => c));
             }
             const objectKey = rawKeys[c];
             child = React.cloneElement(child, {
@@ -181,7 +177,8 @@ export default class TransitionSwitch extends Switch {
         if (component.componentWillEnter) {
             this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onEnterStart.bind(this, objectKey));
         } else if (component.componentDidEnter) {
-            component.componentDidEnter();
+            this._componentStates[objectKey] = 'enter';
+            this._onEnterComplete(objectKey);
         }
     }
 
