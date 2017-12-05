@@ -68,6 +68,7 @@ export default class TransitionSwitch extends Switch {
         this._componentStates = {};
         this._componentAnimationFrames = {};
         this._routeIds = {};
+        this._callbackTimers = [];
         super.componentWillMount();
     }
 
@@ -93,6 +94,11 @@ export default class TransitionSwitch extends Switch {
         }
 
         clearTimeout(this._animationTimer);
+        const callbackTimers = this._callbackTimers;
+        for (let callbackTimer of callbackTimers) {
+            clearTimeout(callbackTimer);
+        }
+
         super.componentWillUnmount();
     }
 
@@ -186,6 +192,15 @@ export default class TransitionSwitch extends Switch {
         this._isAnimationEnabled = true;
     }
 
+    _onTransitionCallback (callbackName, objectKey, transitionDuration) {
+        if (+transitionDuration > 0) {
+            const callbackTimer = setTimeout(this[callbackName].bind(this, objectKey), +transitionDuration);
+            this._callbackTimers.push(callbackTimer);
+        } else {
+            this[callbackName](objectKey);
+        }
+    }
+
     _onEnterStart (objectKey) {
         const component = this._getComponentRef(objectKey);
         if (!component) {
@@ -193,7 +208,7 @@ export default class TransitionSwitch extends Switch {
         }
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'enter';
-        component.componentWillEnter(this._onEnterComplete.bind(this, objectKey));
+        component.componentWillEnter(this._onTransitionCallback.bind(this, '_onEnterComplete', objectKey));
     }
 
     _onEnterComplete (objectKey) {
@@ -215,7 +230,7 @@ export default class TransitionSwitch extends Switch {
         }
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'leave';
-        component.componentWillLeave(this._onLeaveComplete.bind(this, objectKey));
+        component.componentWillLeave(this._onTransitionCallback.bind(this, '_onLeaveComplete', objectKey));
     }
 
     _onLeaveComplete (objectKey) {
