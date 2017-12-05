@@ -110,6 +110,26 @@ export default class TransitionSwitch extends Switch {
         this._componentRefs[objectKey] = component;
     }
 
+    _makeEnter (objectKey, component) {
+        component.componentBeforeEnter && component.componentBeforeEnter();
+        if (component.componentWillEnter) {
+            this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onEnterStart.bind(this, objectKey));
+        } else if (component.componentDidEnter) {
+            this._componentStates[objectKey] = 'enter';
+            this._onEnterComplete(objectKey);
+        }
+    }
+
+    _makeLeave (objectKey, component) {
+        this._onEnterComplete(objectKey);
+        component.componentBeforeLeave && component.componentBeforeLeave();
+        if (component.componentWillLeave) {
+            this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onLeaveStart.bind(this, objectKey));
+        } else {
+            this._onLeaveComplete(objectKey);
+        }
+    }
+
     _onUriChange () {
         const {router} = this.context;
         const prevMatchObjects = this.state.matchObjects;
@@ -147,13 +167,7 @@ export default class TransitionSwitch extends Switch {
             }
             hiddenObjects.push(prevMatchObject);
             hiddenKeys.push(objectKey);
-            this._onEnterComplete(objectKey);
-            component.componentBeforeLeave && component.componentBeforeLeave();
-            if (component.componentWillLeave) {
-                this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onLeaveStart.bind(this, objectKey));
-            } else {
-                this._onLeaveComplete(objectKey);
-            }
+            this._makeLeave(objectKey, component);
         });
 
         this.setState({
@@ -166,26 +180,21 @@ export default class TransitionSwitch extends Switch {
 
     _onChildRef (objectKey, component) {
         if (!component) {
-            return;
+            return false;
         }
 
         const prevComponent = this._getComponentRef(objectKey);
         this._setComponentRef(objectKey, component);
         if (prevComponent) {
-            return;
+            return false;
         }
 
         if (!this._isAnimationEnabled) {
-            return;
+            return false;
         }
 
-        component.componentBeforeEnter && component.componentBeforeEnter();
-        if (component.componentWillEnter) {
-            this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onEnterStart.bind(this, objectKey));
-        } else if (component.componentDidEnter) {
-            this._componentStates[objectKey] = 'enter';
-            this._onEnterComplete(objectKey);
-        }
+        this._makeEnter(objectKey, component);
+        return true;
     }
 
     _onAnimationTimerTick () {
@@ -204,39 +213,42 @@ export default class TransitionSwitch extends Switch {
     _onEnterStart (objectKey) {
         const component = this._getComponentRef(objectKey);
         if (!component) {
-            return;
+            return false;
         }
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'enter';
-        component.componentWillEnter(this._onTransitionCallback.bind(this, '_onEnterComplete', objectKey));
+        component.componentWillEnter && component.componentWillEnter(this._onTransitionCallback.bind(this, '_onEnterComplete', objectKey));
+        return true;
     }
 
     _onEnterComplete (objectKey) {
         const component = this._getComponentRef(objectKey);
         if (!component) {
-            return;
+            return false;
         }
         if (this._componentStates[objectKey] !== 'enter') {
-            return;
+            return false;
         }
         this._componentStates[objectKey] = null;
         component.componentDidEnter && component.componentDidEnter();
+        return true;
     }
 
     _onLeaveStart (objectKey) {
         const component = this._getComponentRef(objectKey);
         if (!component) {
-            return;
+            return false;
         }
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'leave';
-        component.componentWillLeave(this._onTransitionCallback.bind(this, '_onLeaveComplete', objectKey));
+        component.componentWillLeave && component.componentWillLeave(this._onTransitionCallback.bind(this, '_onLeaveComplete', objectKey));
+        return true;
     }
 
     _onLeaveComplete (objectKey) {
         const component = this._getComponentRef(objectKey);
         if (!component) {
-            return;
+            return false;
         }
         this._componentStates[objectKey] = null;
         component.componentDidLeave && component.componentDidLeave();
@@ -251,6 +263,7 @@ export default class TransitionSwitch extends Switch {
             hiddenObjects,
             hiddenKeys
         });
+        return true;
     }
 }
 

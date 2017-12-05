@@ -19,14 +19,14 @@ export default class Switch extends React.PureComponent {
             }
         } catch (error) {
             if (typeof renderError === 'function') {
-                return renderError(error);
+                return renderError(matchObjects, error);
             } else {
-                return this.renderError(error);
+                return this.renderError(matchObjects, error);
             }
         }
     }
 
-    renderError (error) {
+    renderError (matchObjects, error) {
         console.error(error);
         return null;
     }
