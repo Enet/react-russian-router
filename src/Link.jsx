@@ -31,8 +31,12 @@ export default class Link extends React.PureComponent {
     }
 
     _generateUri () {
+        const {href, name, params} = this.props;
+        if (!name) {
+            return href;
+        }
+
         const {router} = this.context;
-        const {name, params} = this.props;
         return router.generateUri(name, params);
     }
 
@@ -58,9 +62,9 @@ export default class Link extends React.PureComponent {
         const {router} = this.context;
         const {action} = this.props;
         if (action === 'replace') {
-            router.replaceUri(uri, null);
+            router.replaceUri(uri);
         } else {
-            router.pushUri(uri, null);
+            router.pushUri(uri);
         }
     }
 }
@@ -70,7 +74,8 @@ Link.contextTypes = {
 };
 
 Link.propTypes = {
-    name: PropTypes.string.isRequired,
+    href: PropTypes.string,
+    name: PropTypes.string,
     params: PropTypes.object,
     action: PropTypes.oneOf(['replace', 'push']),
     target: PropTypes.string,
