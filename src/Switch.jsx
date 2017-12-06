@@ -9,20 +9,10 @@ export default class Switch extends React.PureComponent {
     }
 
     renderMatchObjects (matchObjects) {
-        const {renderContent, renderError} = this.props;
-
         try {
-            if (typeof renderContent === 'function') {
-                return renderContent(matchObjects);
-            } else {
-                return this.renderContent(matchObjects);
-            }
+            return this.renderContent(matchObjects);
         } catch (error) {
-            if (typeof renderError === 'function') {
-                return renderError(matchObjects, error);
-            } else {
-                return this.renderError(matchObjects, error);
-            }
+            return this.renderError(matchObjects, error);
         }
     }
 
@@ -51,6 +41,14 @@ export default class Switch extends React.PureComponent {
     }
 
     componentWillMount () {
+        const {renderContent, renderError} = this.props;
+        if (typeof renderContent === 'function') {
+            this.renderContent = renderContent;
+        }
+        if (typeof renderError === 'function') {
+            this.renderError = renderError;
+        }
+
         this._onUriChange = this._onUriChange.bind(this);
         this._onUriChange();
     }

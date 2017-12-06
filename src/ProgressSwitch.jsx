@@ -8,10 +8,6 @@ export default class ProgressSwitch extends TransitionSwitch {
         this.state.currentTime = Date.now();
     }
 
-    render () {
-        return super.render(...arguments);
-    }
-
     renderProcessedChildren (rawChildren, rawKeys) {
         const processedChildren = [];
 
@@ -48,6 +44,8 @@ export default class ProgressSwitch extends TransitionSwitch {
     }
 
     componentDidUpdate () {
+        super.componentDidUpdate();
+
         const {transitionDuration} = this.props;
         const {hiddenKeys} = this.state;
         const currentTime = Date.now();

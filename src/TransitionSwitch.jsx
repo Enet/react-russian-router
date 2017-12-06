@@ -55,6 +55,16 @@ export default class TransitionSwitch extends Switch {
         return processedChildren;
     }
 
+    renderError (matchObjects, error) {
+        if (matchObjects === this.state.matchObjects) {
+            this._matchError = error;
+        } else {
+            this._hiddenError = error;
+        }
+        console.error(error);
+        return null;
+    }
+
     renderContent (matchObjects) {
         if (matchObjects === this.state.matchObjects && !matchObjects.length) {
             throw 'Switch cannot render matchObjects!';
@@ -69,12 +79,27 @@ export default class TransitionSwitch extends Switch {
         this._componentAnimationFrames = {};
         this._routeIds = {};
         this._callbackTimers = [];
+        this._errorId = 0;
+        this._matchError = null;
+        this._hiddenError = null;
+
         super.componentWillMount();
+        this.renderError = TransitionSwitch.prototype.renderError;
     }
 
     componentDidMount () {
         super.componentDidMount(...arguments);
         this._animationTimer = setTimeout(this._onAnimationTimerTick.bind(this));
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate () {
+        if (!this._matchError && !this._hiddenError) {
+            return;
+        }
+        this._errorId++;
+        this._matchError && this._throwError('match');
+        this._hiddenError && this._throwError('hidden');
     }
 
     componentWillUnmount () {
@@ -108,6 +133,20 @@ export default class TransitionSwitch extends Switch {
 
     _setComponentRef (objectKey, component) {
         this._componentRefs[objectKey] = component;
+    }
+
+    _throwError (section) {
+        const errorKey = 'ReactRussianRouter/Error~' + this._errorId;
+        const errorObject = {
+            name: errorKey,
+            payload: this.props.renderError,
+            error: true
+        };
+        this.setState({
+            [section + 'Keys']: [errorKey],
+            [section + 'Objects']: [errorObject]
+        });
+        this['_' + section + 'Error'] = null;
     }
 
     _makeEnter (objectKey, component) {
