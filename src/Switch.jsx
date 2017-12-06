@@ -3,6 +3,12 @@ import PropTypes from 'prop-types';
 import BrowserRussianRouter from 'browser-russian-router';
 
 export default class Switch extends React.PureComponent {
+    constructor () {
+        super();
+        const matchObjects = [];
+        this.state = {matchObjects};
+    }
+
     render () {
         const {matchObjects} = this.state;
         return this.renderMatchObjects(matchObjects);
@@ -17,6 +23,7 @@ export default class Switch extends React.PureComponent {
     }
 
     renderError (matchObjects, error) {
+        this._matchError = error;
         console.error(error);
         return null;
     }
@@ -45,10 +52,9 @@ export default class Switch extends React.PureComponent {
         if (typeof renderContent === 'function') {
             this.renderContent = renderContent;
         }
-        if (typeof renderError === 'function') {
-            this.renderError = renderError;
-        }
 
+        this._errorId = 0;
+        this._matchError = null;
         this._onUriChange = this._onUriChange.bind(this);
         this._onUriChange();
     }
@@ -58,9 +64,31 @@ export default class Switch extends React.PureComponent {
         router.addListener('change', this._onUriChange);
     }
 
+    componentDidUpdate () {
+        if (!this._matchError) {
+            return;
+        }
+        this._errorId++;
+        this._matchError && this._throwError();
+    }
+
     componentWillUnmount () {
         const {router} = this.context;
         router.removeListener('change', this._onUriChange);
+    }
+
+    _throwError (section='match') {
+        const errorKey = 'ReactRussianRouter/Error~' + this._errorId;
+        const errorObject = {
+            name: errorKey,
+            payload: this.props.renderError,
+            error: this['_' + section + 'Error']
+        };
+        this.setState({
+            [section + 'Keys']: [errorKey],
+            [section + 'Objects']: [errorObject]
+        });
+        this['_' + section + 'Error'] = null;
     }
 
     _onUriChange () {

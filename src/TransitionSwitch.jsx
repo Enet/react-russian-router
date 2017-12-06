@@ -4,7 +4,7 @@ import Switch from './Switch';
 
 export default class TransitionSwitch extends Switch {
     constructor () {
-        super(...arguments);
+        super();
         this.state = {
             matchObjects: [],
             matchKeys: [],
@@ -79,12 +79,9 @@ export default class TransitionSwitch extends Switch {
         this._componentAnimationFrames = {};
         this._routeIds = {};
         this._callbackTimers = [];
-        this._errorId = 0;
-        this._matchError = null;
         this._hiddenError = null;
 
         super.componentWillMount();
-        this.renderError = TransitionSwitch.prototype.renderError;
     }
 
     componentDidMount () {
@@ -133,20 +130,6 @@ export default class TransitionSwitch extends Switch {
 
     _setComponentRef (objectKey, component) {
         this._componentRefs[objectKey] = component;
-    }
-
-    _throwError (section) {
-        const errorKey = 'ReactRussianRouter/Error~' + this._errorId;
-        const errorObject = {
-            name: errorKey,
-            payload: this.props.renderError,
-            error: true
-        };
-        this.setState({
-            [section + 'Keys']: [errorKey],
-            [section + 'Objects']: [errorObject]
-        });
-        this['_' + section + 'Error'] = null;
     }
 
     _makeEnter (objectKey, component) {
