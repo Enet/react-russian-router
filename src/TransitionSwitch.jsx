@@ -27,7 +27,7 @@ export default class TransitionSwitch extends Switch {
         const processedChildren = [];
 
         React.Children.forEach(rawChildren, (child, c) => {
-            if (!React.isValidElement(child)) {
+            if (!React.isValidElement(child) || typeof child.type === 'string') {
                 return processedChildren.push(child);
             }
             const childPrototype = child.type.prototype;
@@ -66,10 +66,16 @@ export default class TransitionSwitch extends Switch {
     }
 
     renderContent (matchObjects) {
-        if (matchObjects === this.state.matchObjects && !matchObjects.length) {
-            throw 'Switch cannot render matchObjects!';
+        let childLimit = Infinity;
+        if (matchObjects === this.state.matchObjects) {
+            childLimit = this.props.childLimit;
+            if (!matchObjects.length) {
+                throw 'Switch cannot render matchObjects!';
+            }
         }
-        return matchObjects.map((matchObject) => this.renderPayload(matchObject));
+        return matchObjects
+            .slice(0, Math.max(0, childLimit))
+            .map((matchObject) => this.renderPayload(matchObject));
     }
 
     componentWillMount () {
@@ -85,9 +91,8 @@ export default class TransitionSwitch extends Switch {
     }
 
     componentDidMount () {
-        super.componentDidMount(...arguments);
+        super.componentDidMount();
         this._animationTimer = setTimeout(this._onAnimationTimerTick.bind(this));
-        this.componentDidUpdate();
     }
 
     componentDidUpdate () {
@@ -198,6 +203,8 @@ export default class TransitionSwitch extends Switch {
             hiddenObjects,
             hiddenKeys
         });
+
+        this._emitUriChange(matchObjects);
     }
 
     _onChildRef (objectKey, component) {
@@ -240,6 +247,11 @@ export default class TransitionSwitch extends Switch {
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'enter';
         component.componentWillEnter && component.componentWillEnter(this._onTransitionCallback.bind(this, '_onEnterComplete', objectKey));
+
+        const {onEnterStart} = this.props;
+        const {matchObjects, hiddenObjects} = this.state;
+        const type = 'enterstart';
+        onEnterStart && onEnterStart({type, component, matchObjects, hiddenObjects});
         return true;
     }
 
@@ -253,6 +265,11 @@ export default class TransitionSwitch extends Switch {
         }
         this._componentStates[objectKey] = null;
         component.componentDidEnter && component.componentDidEnter();
+
+        const {onEnterEnd} = this.props;
+        const {matchObjects, hiddenObjects} = this.state;
+        const type = 'enterend';
+        onEnterEnd && onEnterEnd({type, component, matchObjects, hiddenObjects});
         return true;
     }
 
@@ -264,6 +281,11 @@ export default class TransitionSwitch extends Switch {
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'leave';
         component.componentWillLeave && component.componentWillLeave(this._onTransitionCallback.bind(this, '_onLeaveComplete', objectKey));
+
+        const {onLeaveStart} = this.props;
+        const {matchObjects, hiddenObjects} = this.state;
+        const type = 'leavestart';
+        onLeaveStart && onLeaveStart({type, component, matchObjects, hiddenObjects});
         return true;
     }
 
@@ -285,14 +307,29 @@ export default class TransitionSwitch extends Switch {
             hiddenObjects,
             hiddenKeys
         });
+
+        const {onLeaveEnd} = this.props;
+        const {matchObjects} = this.state;
+        const type = 'leaveend';
+        onLeaveEnd && onLeaveEnd({type, component, matchObjects, hiddenObjects});
         return true;
     }
 }
 
 TransitionSwitch.propTypes = {
-    transitionOnAppear: PropTypes.bool
+    childLimit: PropTypes.number,
+    transitionOnAppear: PropTypes.bool,
+    renderContent: PropTypes.func,
+    renderError: PropTypes.func,
+    onUriChange: PropTypes.func,
+    onError: PropTypes.func,
+    onEnterStart: PropTypes.func,
+    onEnterEnd: PropTypes.func,
+    onLeaveStart: PropTypes.func,
+    onLeaveEnd: PropTypes.func
 };
 
 TransitionSwitch.defaultProps = {
+    childLimit: 1,
     transitionOnAppear: false
 };

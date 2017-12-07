@@ -29,17 +29,18 @@ export default class Switch extends React.PureComponent {
     }
 
     renderContent (matchObjects) {
-        const matchObject = matchObjects[0];
-        if (!matchObject) {
+        if (!matchObjects.length) {
             throw 'Switch cannot render matchObject!';
         }
-        return this.renderPayload(matchObject);
+        return matchObjects
+            .slice(0, Math.max(0, this.props.childLimit))
+            .map((matchObject) => this.renderPayload(matchObject));
     }
 
     renderPayload (matchObject) {
         const Payload = matchObject.payload;
         if (Payload instanceof React.Component || typeof Payload === 'function') {
-            return <Payload matchObject={matchObject} />
+            return <Payload key={matchObject.name} matchObject={matchObject} />
         } else if (Payload === undefined) {
             return null;
         } else {
@@ -48,7 +49,7 @@ export default class Switch extends React.PureComponent {
     }
 
     componentWillMount () {
-        const {renderContent, renderError} = this.props;
+        const {renderContent} = this.props;
         if (typeof renderContent === 'function') {
             this.renderContent = renderContent;
         }
@@ -62,6 +63,7 @@ export default class Switch extends React.PureComponent {
     componentDidMount () {
         const {router} = this.context;
         router.addListener('change', this._onUriChange);
+        this.componentDidUpdate();
     }
 
     componentDidUpdate () {
@@ -78,23 +80,35 @@ export default class Switch extends React.PureComponent {
     }
 
     _throwError (section='match') {
-        const errorKey = 'ReactRussianRouter/Error~' + this._errorId;
+        const error = this['_' + section + 'Error'];
+        const errorKey = 'ReactRussianRouter/Switch/Error~' + this._errorId;
         const errorObject = {
             name: errorKey,
             payload: this.props.renderError,
-            error: this['_' + section + 'Error']
+            error
         };
         this.setState({
             [section + 'Keys']: [errorKey],
             [section + 'Objects']: [errorObject]
         });
         this['_' + section + 'Error'] = null;
+
+        const {onError} = this.props;
+        const type = 'error';
+        onError && onError({type, error, section});
+    }
+
+    _emitUriChange (matchObjects) {
+        const {onUriChange} = this.props;
+        const type = 'urichange';
+        onUriChange && onUriChange({type, matchObjects});
     }
 
     _onUriChange () {
         const {router} = this.context;
         const matchObjects = router.getMatchObjects();
         this.setState({matchObjects});
+        this._emitUriChange(matchObjects);
     }
 }
 
@@ -103,6 +117,13 @@ Switch.contextTypes = {
 };
 
 Switch.propTypes = {
+    childLimit: PropTypes.number,
     renderContent: PropTypes.func,
-    renderError: PropTypes.func
+    renderError: PropTypes.func,
+    onUriChange: PropTypes.func,
+    onError: PropTypes.func
+};
+
+Switch.defaultProps = {
+    childLimit: 1
 };

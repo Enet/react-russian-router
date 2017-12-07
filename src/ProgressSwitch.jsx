@@ -32,11 +32,13 @@ export default class ProgressSwitch extends TransitionSwitch {
     }
 
     componentWillMount () {
-        if (+this.props.progressEasing(0) !== 0 ||
-            +this.props.progressEasing(100) !== 100) {
+        const {progressEasing, transitionDuration} = this.props;
+        if (typeof progressEasing !== 'function' ||
+            +progressEasing(0) !== 0 ||
+            +progressEasing(100) !== 100) {
             throw 'Prop progressEasing must be presented by function that returns 0 for 0, 100 for 100!';
         }
-        if ((+this.props.transitionDuration > 0) === false) {
+        if ((+transitionDuration > 0) === false) {
             throw 'Prop transitionDuration must be presented by positive number!';
         }
         super.componentWillMount();
@@ -160,12 +162,22 @@ export default class ProgressSwitch extends TransitionSwitch {
 }
 
 ProgressSwitch.propTypes = {
+    childLimit: PropTypes.number,
     transitionOnAppear: PropTypes.bool,
     transitionDuration: PropTypes.number,
-    progressEasing: PropTypes.func
+    progressEasing: PropTypes.func,
+    renderContent: PropTypes.func,
+    renderError: PropTypes.func,
+    onUriChange: PropTypes.func,
+    onError: PropTypes.func,
+    onEnterStart: PropTypes.func,
+    onEnterEnd: PropTypes.func,
+    onLeaveStart: PropTypes.func,
+    onLeaveEnd: PropTypes.func
 };
 
 ProgressSwitch.defaultProps = {
+    childLimit: 1,
     transitionOnAppear: false,
     transitionDuration: 1000,
     progressEasing: (progress) => progress

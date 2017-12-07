@@ -17,8 +17,8 @@ export default class ReactRussianRouter extends React.PureComponent {
     componentWillMount () {
         const {routes, options} = this.props;
         const router = new BrowserRussianRouter(routes, options);
-        this._onUriChange = this._onUriChange.bind(this);
         this._router = router;
+        this._onUriChange = this._onUriChange.bind(this);
         this._onUriChange();
     }
 
