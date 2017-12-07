@@ -36,7 +36,25 @@ export default class AsyncSwitch extends Switch {
         const matchObjectPromises = matchObjects
             .slice(0, Math.max(0, this.props.childLimit))
             .map((matchObject) => this._matchObjectToPromise(matchObject));
-        return Promise.all(matchObjectPromises);
+        const minWaitTimePromises = [Promise.all(matchObjectPromises)];
+        const minWaitTime = +this.props.minWaitTime;
+        if (minWaitTime > 0) {
+            minWaitTimePromises.push(new Promise((resolve, reject) => {
+                setTimeout(resolve, minWaitTime);
+            }));
+        }
+
+        const maxWaitTimePromises = [Promise.all(minWaitTimePromises).then(([a, b]) => a)];
+        const maxWaitTime = +this.props.maxWaitTime;
+        if (maxWaitTime > 0) {
+            maxWaitTimePromises.push(new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    reject('Max waiting time has expired!');
+                }, maxWaitTime);
+            }));
+        }
+
+        return Promise.race(maxWaitTimePromises);
     }
 
     _matchObjectToPromise (matchObject) {
@@ -100,6 +118,8 @@ AsyncSwitch.propTypes = {
     getPayload: PropTypes.func.isRequired,
     renderContent: PropTypes.func,
     renderError: PropTypes.func,
+    minWaitTime: PropTypes.number,
+    maxWaitTime: PropTypes.number,
     onUriChange: PropTypes.func,
     onError: PropTypes.func,
     onWaitStart: PropTypes.func,
@@ -108,5 +128,7 @@ AsyncSwitch.propTypes = {
 
 AsyncSwitch.defaultProps = {
     childLimit: 1,
-    getPayload: (matchObject) => new Promise((resolve) => resolve(matchObject))
+    getPayload: (matchObject) => new Promise((resolve) => resolve(matchObject)),
+    minWaitTime: 0,
+    maxWaitTime: 60000
 };

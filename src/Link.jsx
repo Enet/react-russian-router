@@ -35,11 +35,14 @@ const areQueriesEqual = (linkQuery, routerQuery) => {
 export default class Link extends React.PureComponent {
     render () {
         const href = this._generateUri();
+        const props = Object.assign({}, this.props);
+        delete props.name;
+        delete props.params;
+        delete props.action;
+        delete props.actionIfMatched;
+
         return <a
-            {...this.props}
-            name={null}
-            params={null}
-            action={null}
+            {...props}
             href={href}
             className={this._getClassName()}
             onClick={this._onClick.bind(this, href)}>

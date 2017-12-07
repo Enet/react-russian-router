@@ -12,13 +12,6 @@ export default class FetchSwitch extends AsyncSwitch {
         super.componentWillMount();
     }
 
-    _getPayload (matchObjects) {
-        const matchPromises = matchObjects
-            .slice(0, this.props.childLimit)
-            .map((matchObject) => this._matchObjectToPromise(matchObject));
-        return Promise.all(matchPromises);
-    }
-
     _matchObjectToPromise (matchObject) {
         const cssCodePromise = this._getCodePromise(matchObject, 'Css');
         const jsCodePromise = this._getCodePromise(matchObject, 'Js');
