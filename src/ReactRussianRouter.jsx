@@ -8,10 +8,8 @@ export default class ReactRussianRouter extends React.PureComponent {
     }
 
     getChildContext () {
-        const {matchObjects} = this.state;
-        return {
-            router: this._router
-        };
+        const router = this._router;
+        return {router};
     }
 
     componentWillMount () {

@@ -32,6 +32,13 @@ export default class AsyncSwitch extends Switch {
         super.componentWillMount();
     }
 
+    _extractPayloadNode (matchObject) {
+        if (matchObject.hasOwnProperty('error')) {
+            return matchObject.payload;
+        }
+        return this._payloadMap.get(matchObject);
+    }
+
     _getPayload (matchObjects) {
         const matchObjectPromises = matchObjects
             .slice(0, Math.max(0, this.props.childLimit))
@@ -60,8 +67,8 @@ export default class AsyncSwitch extends Switch {
     _matchObjectToPromise (matchObject) {
         return this.props.getPayload(matchObject)
             .then((payload) => {
-                const resolvedMatchObject = Object.assign({}, matchObject, {payload});
-                return resolvedMatchObject;
+                this._payloadMap.set(matchObject, payload);
+                return matchObject;
             });
     }
 
@@ -71,10 +78,10 @@ export default class AsyncSwitch extends Switch {
     }
 
     _onUriChange () {
-        const {router} = this.context;
-        const matchObjects = router.getMatchObjects();
+        const matchObjects = this._getMatchObjects();
         const navigationId = ++this._navigationId;
 
+        this._payloadMap = new Map();
         this._getPayload(matchObjects)
             .then(this._onPayloadResolve.bind(this, navigationId))
             .catch(this._onPayloadReject.bind(this, navigationId));

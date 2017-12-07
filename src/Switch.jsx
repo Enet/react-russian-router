@@ -38,11 +38,14 @@ export default class Switch extends React.PureComponent {
     }
 
     renderPayload (matchObject) {
-        const Payload = matchObject.payload;
+        const Payload = this._extractPayloadNode(matchObject);
+        const payloadProps = this._extractPayloadProps(matchObject);
         if (Payload instanceof React.Component || typeof Payload === 'function') {
-            return <Payload key={matchObject.name} matchObject={matchObject} />
+            return <Payload {...payloadProps} />
         } else if (Payload === undefined) {
             return null;
+        } else if (React.isValidElement(Payload)) {
+            return React.cloneElement(Payload, payloadProps);
         } else {
             return Payload;
         }
@@ -79,12 +82,30 @@ export default class Switch extends React.PureComponent {
         router.removeListener('change', this._onUriChange);
     }
 
+    _extractPayloadNode (matchObject) {
+        return matchObject.payload;
+    }
+
+    _extractPayloadProps (matchObject) {
+        const {key} = matchObject;
+        return {key, matchObject};
+    }
+
+    _getMatchObjects () {
+        const {router} = this.context;
+        const matchObjects = router.getMatchObjects();
+        return matchObjects;
+    }
+
     _throwError (section='match') {
         const error = this['_' + section + 'Error'];
-        const errorKey = 'ReactRussianRouter/Switch/Error~' + this._errorId;
+        const errorName = 'ReactRussianRouter/Switch/Error';
+        const errorKey = errorName + '~' + this._errorId;
         const errorObject = {
-            name: errorKey,
+            name: errorName,
+            key: errorKey,
             payload: this.props.renderError,
+            data: null,
             error
         };
         this.setState({
@@ -105,8 +126,7 @@ export default class Switch extends React.PureComponent {
     }
 
     _onUriChange () {
-        const {router} = this.context;
-        const matchObjects = router.getMatchObjects();
+        const matchObjects = this._getMatchObjects();
         this.setState({matchObjects});
         this._emitUriChange(matchObjects);
     }

@@ -12,6 +12,12 @@ export default class FetchSwitch extends AsyncSwitch {
         super.componentWillMount();
     }
 
+    _extractPayloadProps (matchObject) {
+        const payloadProps = super._extractPayloadProps(matchObject);
+        payloadProps.userData = this._userDataMap.get(matchObject);
+        return payloadProps;
+    }
+
     _matchObjectToPromise (matchObject) {
         const cssCodePromise = this._getCodePromise(matchObject, 'Css');
         const jsCodePromise = this._getCodePromise(matchObject, 'Js');
@@ -25,8 +31,9 @@ export default class FetchSwitch extends AsyncSwitch {
             .then(([cssCode, jsCode, userData, payload]) => {
                 this._appendCss(cssCode, matchObject, userData);
                 this._appendJs(jsCode, matchObject, userData);
-                const resolvedMatchObject = Object.assign({}, matchObject, {payload});
-                return resolvedMatchObject;
+                this._payloadMap.set(matchObject, payload);
+                this._userDataMap.set(matchObject, userData);
+                return matchObject;
             });
     }
 
@@ -121,6 +128,11 @@ export default class FetchSwitch extends AsyncSwitch {
         jsNode.id = jsId;
         jsNode.innerHTML = jsCode;
         document.head.appendChild(jsNode);
+    }
+
+    _onUriChange () {
+        this._userDataMap = new Map();
+        super._onUriChange();
     }
 }
 

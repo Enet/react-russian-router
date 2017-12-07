@@ -163,7 +163,7 @@ export default class TransitionSwitch extends Switch {
         const prevMatchKeys = this.state.matchKeys;
         const prevHiddenObjects = this.state.hiddenObjects;
         const prevHiddenKeys = this.state.hiddenKeys;
-        const matchObjects = router.getMatchObjects();
+        const matchObjects = this._getMatchObjects();
         const matchKeys = [];
         const hiddenObjects = prevHiddenObjects.slice();
         const hiddenKeys = prevHiddenKeys.slice();
@@ -175,7 +175,7 @@ export default class TransitionSwitch extends Switch {
             }
             const objectIndex = prevMatchObjects.findIndex((prevMatchObject) => prevMatchObject.name === routeName);
             if (objectIndex === -1) {
-                matchKeys.push(routeName + '~' + this._routeIds[routeName]++);
+                matchKeys.push(matchObject.key + '~' + router.getNavigationKey());
             } else {
                 matchKeys.push(prevMatchKeys[objectIndex]);
             }
