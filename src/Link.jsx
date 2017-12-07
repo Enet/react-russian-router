@@ -10,6 +10,28 @@ const isMetaKeyPressed = (event) => {
     return event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
 };
 
+const pathRegExp = /\/$/;
+
+const areStringsEqual = (linkString, routerString) => {
+    return linkString.toLowerCase() === routerString.toLowerCase();
+};
+
+const arePathsEqual = (linkPath, routerPath) => {
+    return areStringsEqual(linkPath.replace(pathRegExp, ''), routerPath.replace(pathRegExp, ''));
+};
+
+const areQueriesEqual = (linkQuery, routerQuery) => {
+    if (Object.keys(linkQuery).length < Object.keys(routerQuery).length) {
+        return false;
+    }
+    for (let r in routerQuery) {
+        if (!areStringsEqual(linkQuery[r], routerQuery[r])) {
+            return false;
+        }
+    }
+    return true;
+};
+
 export default class Link extends React.PureComponent {
     render () {
         const href = this._generateUri();
@@ -40,6 +62,43 @@ export default class Link extends React.PureComponent {
         return router.generateUri(name, params);
     }
 
+    _isMatched () {
+        const {router} = this.context;
+        const linkParsedRoutes = {};
+        const linkHref = this._generateUri();
+
+        const routerParsedRoutes = router.getParsedRoutes();
+        const routerMatchObjects = router.getMatchObjects();
+        const routerMatchObjectsByName = {};
+        routerMatchObjects.forEach((routerMatchObject) => {
+            const routeName = routerMatchObject.name;
+            routerMatchObjectsByName[routeName] = routerMatchObject;
+            const routerParsedRoute = routerParsedRoutes[routeName];
+            linkParsedRoutes[routeName] = routerParsedRoute;
+        });
+
+        const linkMatchObjects = router.matchUri(linkHref, linkParsedRoutes);
+        const linkMatchObjectsByName = {};
+        linkMatchObjects.forEach((linkMatchObject) => {
+            const routeName = linkMatchObject.name;
+            linkMatchObjectsByName[routeName] = linkMatchObject;
+        });
+
+        for (let routeName in linkMatchObjectsByName) {
+            const linkMatchObject = linkMatchObjectsByName[routeName];
+            const routerMatchObject = routerMatchObjectsByName[routeName];
+            if (areStringsEqual(linkMatchObject.protocol, routerMatchObject.protocol) &&
+                areStringsEqual(linkMatchObject.domain, routerMatchObject.domain) &&
+                areStringsEqual(linkMatchObject.port, routerMatchObject.port) &&
+                arePathsEqual(linkMatchObject.path, routerMatchObject.path) &&
+                areQueriesEqual(linkMatchObject.query, routerMatchObject.query) &&
+                areStringsEqual(linkMatchObject.hash, routerMatchObject.hash)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     _onClick (uri, event) {
         const {onClick} = this.props;
         if (onClick) {
@@ -59,6 +118,9 @@ export default class Link extends React.PureComponent {
         }
 
         event.preventDefault();
+        if (!this.props.actionIfMatched && this._isMatched()) {
+            return;
+        }
         const {router} = this.context;
         const {action} = this.props;
         if (action === 'replace') {
@@ -79,10 +141,12 @@ Link.propTypes = {
     params: PropTypes.object,
     action: PropTypes.oneOf(['replace', 'push']),
     target: PropTypes.string,
+    actionIfMatched: PropTypes.bool,
     onClick: PropTypes.func
 };
 
 Link.defaultProps = {
     action: 'push',
-    target: '_self'
+    target: '_self',
+    actionIfMatched: false
 };
