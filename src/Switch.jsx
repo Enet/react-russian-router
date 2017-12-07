@@ -71,6 +71,7 @@ export default class Switch extends React.PureComponent {
 
     componentDidUpdate () {
         if (!this._matchError) {
+            this._restoreScroll();
             return;
         }
         this._errorId++;
@@ -95,6 +96,15 @@ export default class Switch extends React.PureComponent {
         const {router} = this.context;
         const matchObjects = router.getMatchObjects();
         return matchObjects;
+    }
+
+    _restoreScroll () {
+        const {router} = this.context;
+        const navigationKey = router.getNavigationKey();
+        if (navigationKey !== this._navigationKey) {
+            this._navigationKey = navigationKey;
+            router.restoreScroll();
+        }
     }
 
     _throwError (section='match') {

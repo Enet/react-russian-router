@@ -97,6 +97,7 @@ export default class TransitionSwitch extends Switch {
 
     componentDidUpdate () {
         if (!this._matchError && !this._hiddenError) {
+            this._restoreScroll();
             return;
         }
         this._errorId++;

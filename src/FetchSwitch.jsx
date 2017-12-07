@@ -7,6 +7,7 @@ const jsId = 'ReactRussianRouter/FetchSwitch/JsNode';
 
 export default class FetchSwitch extends AsyncSwitch {
     componentWillMount () {
+        this._userDataMap = new Map();
         this._cachedCss = {};
         this._cachedJs = {};
         super.componentWillMount();
@@ -18,7 +19,16 @@ export default class FetchSwitch extends AsyncSwitch {
         return payloadProps;
     }
 
-    _matchObjectToPromise (matchObject) {
+    _getPayload (matchObjects, payloadMap) {
+        const userDataMap = new Map();
+        return super._getPayload(matchObjects, payloadMap, userDataMap)
+            .then((matchObjects) => {
+                this._userDataMap = userDataMap;
+                return matchObjects;
+            });
+    }
+
+    _matchObjectToPromise (matchObject, optionalMaps) {
         const cssCodePromise = this._getCodePromise(matchObject, 'Css');
         const jsCodePromise = this._getCodePromise(matchObject, 'Js');
         const userDataPromise = this._getUserDataPromise(matchObject);
@@ -31,8 +41,8 @@ export default class FetchSwitch extends AsyncSwitch {
             .then(([cssCode, jsCode, userData, payload]) => {
                 this._appendCss(cssCode, matchObject, userData);
                 this._appendJs(jsCode, matchObject, userData);
-                this._payloadMap.set(matchObject, payload);
-                this._userDataMap.set(matchObject, userData);
+                optionalMaps[0].set(matchObject, payload);
+                optionalMaps[1].set(matchObject, userData);
                 return matchObject;
             });
     }

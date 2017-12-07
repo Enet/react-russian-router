@@ -31,10 +31,13 @@ export default class ReactRussianRouter extends React.PureComponent {
         router.destructor();
     }
 
-    _onUriChange () {
+    _onUriChange (event) {
         const router = this._router;
         const matchObjects = router.getMatchObjects();
         this.setState({matchObjects});
+
+        const {onUriChange} = this.props;
+        event && onUriChange && onUriChange(event);
     }
 }
 
@@ -49,7 +52,8 @@ ReactRussianRouter.propTypes = {
         params: PropTypes.object,
         options: PropTypes.object
     })),
-    options: PropTypes.object
+    options: PropTypes.object,
+    onUriChange: PropTypes.func
 };
 
 ReactRussianRouter.defaultProps = {

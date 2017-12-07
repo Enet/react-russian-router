@@ -6,6 +6,7 @@ export default class AsyncSwitch extends Switch {
     constructor () {
         super();
         this.state.isSpinnerVisible = true;
+        this.state.isWaiting = true;
     }
 
     render () {
@@ -28,8 +29,16 @@ export default class AsyncSwitch extends Switch {
             console.warn('You didn\'t provide getPayload function. Most likely it means that you don\'t need AsyncSwitch.');
         }
 
+        this._payloadMap = new Map();
         this._navigationId = 0;
         super.componentWillMount();
+    }
+
+    _restoreScroll () {
+        if (this.state.isWaiting) {
+            return;
+        }
+        super._restoreScroll(...arguments);
     }
 
     _extractPayloadNode (matchObject) {
@@ -39,10 +48,21 @@ export default class AsyncSwitch extends Switch {
         return this._payloadMap.get(matchObject);
     }
 
-    _getPayload (matchObjects) {
+    _getMatchObjects () {
+        if (this._matchObjects) {
+            return this._matchObjects;
+        }
+
+        const {router} = this.context;
+        const matchObjects = router.getMatchObjects();
+        this._matchObjects = matchObjects;
+        return matchObjects;
+    }
+
+    _getPayload (matchObjects, ...optionalMaps) {
         const matchObjectPromises = matchObjects
             .slice(0, Math.max(0, this.props.childLimit))
-            .map((matchObject) => this._matchObjectToPromise(matchObject));
+            .map((matchObject) => this._matchObjectToPromise(matchObject, optionalMaps));
         const minWaitTimePromises = [Promise.all(matchObjectPromises)];
         const minWaitTime = +this.props.minWaitTime;
         if (minWaitTime > 0) {
@@ -61,34 +81,34 @@ export default class AsyncSwitch extends Switch {
             }));
         }
 
-        return Promise.race(maxWaitTimePromises);
-    }
-
-    _matchObjectToPromise (matchObject) {
-        return this.props.getPayload(matchObject)
-            .then((payload) => {
-                this._payloadMap.set(matchObject, payload);
-                return matchObject;
+        return Promise.race(maxWaitTimePromises)
+            .then((matchObjects) => {
+                this._payloadMap = optionalMaps[0];
+                return matchObjects;
             });
     }
 
-    _toggleSpinner (value) {
-        const isSpinnerVisible = !!value;
-        this.setState({isSpinnerVisible});
+    _matchObjectToPromise (matchObject, optionalMaps) {
+        return this.props.getPayload(matchObject)
+            .then((payload) => {
+                optionalMaps[0].set(matchObject, payload);
+                return matchObject;
+            });
     }
 
     _onUriChange () {
         const matchObjects = this._getMatchObjects();
         const navigationId = ++this._navigationId;
 
-        this._payloadMap = new Map();
-        this._getPayload(matchObjects)
+        const payloadMap = new Map();
+        this._getPayload(matchObjects, payloadMap)
             .then(this._onPayloadResolve.bind(this, navigationId))
             .catch(this._onPayloadReject.bind(this, navigationId));
 
         if (typeof this.props.renderSpinner === 'function') {
-            this._toggleSpinner(true);
+            this.state.isSpinnerVisible = true;
         }
+        this.setState({isWaiting: true});
 
         this._emitUriChange(matchObjects);
         const {onWaitStart} = this.props;
@@ -101,8 +121,14 @@ export default class AsyncSwitch extends Switch {
             return;
         }
 
-        this.setState({matchObjects});
-        this._toggleSpinner(false);
+        this._matchObjects = null;
+        const isWaiting = false;
+        const isSpinnerVisible = false;
+        this.setState({
+            matchObjects,
+            isWaiting,
+            isSpinnerVisible
+        });
 
         const {onWaitEnd} = this.props;
         const type = 'waitend';
@@ -114,9 +140,11 @@ export default class AsyncSwitch extends Switch {
             return;
         }
 
+        this.state.isWaiting = false;
+        this.state.isSpinnerVisible = false;
+        this._matchObjects = null;
         this._matchError = error;
         this._throwError();
-        this._toggleSpinner(false);
     }
 }
 
