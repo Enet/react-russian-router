@@ -3,33 +3,29 @@ import PropTypes from 'prop-types';
 import Switch from './Switch';
 import Redirect from './Redirect';
 
+const spinnerProps = {key: 'ReactRussianRouter/AsyncSwitch/Spinner'};
+
 export default class AsyncSwitch extends Switch {
     constructor () {
         super();
-        this.state.isSpinnerVisible = true;
+        this.state.isInited = false;
         this.state.isWaiting = true;
     }
 
     render () {
-        if (this.state.isSpinnerVisible) {
-            return this.renderSpinner();
+        const {isInited} = this.state;
+        if (!isInited && !this.props.spinnerBeforeInit) {
+            return null;
         }
-        if (this.state.matchObjects === this._prevMatchObjects && !this.state.matchObjects.length) {
-            {/* Usually it's a case when error page is loaded and immediately redirects to another uri */}
-            return this.renderSpinner();
+        if ((!isInited && this.props.spinnerBeforeInit) ||
+            (this.state.isWaiting && this.props.spinnerWhenWaiting)) {
+            return this.renderComponent(this.props.spinnerComponent, spinnerProps);
         }
         return super.render();
     }
 
-    renderSpinner () {
-        return null;
-    }
-
     componentWillMount () {
-        const {renderSpinner, getPayload} = this.props;
-        if (typeof renderSpinner === 'function') {
-            this.renderSpinner = renderSpinner;
-        }
+        const {getPayload} = this.props;
         if (getPayload === AsyncSwitch.defaultProps.getPayload) {
             console.warn('You didn\'t provide getPayload function. Most likely it means that you don\'t need AsyncSwitch.');
         }
@@ -43,34 +39,48 @@ export default class AsyncSwitch extends Switch {
     componentDidUpdate () {
         super.componentDidUpdate();
 
-        // All the code below restores previous state to avoid flashes during redirect
         if (this.state.isWaiting) {
             return;
         }
+
+        this._initSwitch();
         const currentMatchObjects = this._getMatchObjects();
         const renderedMatchObjects = this.state.matchObjects;
+
         if (!renderedMatchObjects.length) {
+            // If there are no renderedMatchObjects, don't cache empty array
             return;
         }
-        // Rendering errors is wily, be careful with it
-        if (!currentMatchObjects.length &&
-            renderedMatchObjects[0] &&
-            renderedMatchObjects[0].hasOwnProperty('error')) {
+
+        const isError = renderedMatchObjects[0] && renderedMatchObjects[0].hasOwnProperty('error');
+        if (!currentMatchObjects.length && isError) {
+            // If error occured, don't cache renderedMatchObjects
             return;
         }
+
+        // Check whether redirect occured or not during rendering
         for (let r = 0, rl = renderedMatchObjects.length; r < rl; r++) {
             if (renderedMatchObjects[r] !== currentMatchObjects[r]) {
-                this._restorePrevState();
+                // If redirect occured, set previous state to avoid content flashes
+                const isInited = !isError || this._prevMatchObjects.length > 0;
+                this._restorePrevState(isInited);
                 return;
             }
         }
 
+        // If rendering has gone without errors, cache renderedMatchObjects
         this._prevMatchObjects = renderedMatchObjects;
     }
 
-    _restorePrevState () {
+    _initSwitch () {
+        const isInited = true;
+        this.setState({isInited});
+    }
+
+    _restorePrevState (isInited) {
         this._payloadMap = this._prevPayloadMap;
         this.setState({
+            isInited,
             matchObjects: this._prevMatchObjects
         });
     }
@@ -159,10 +169,8 @@ export default class AsyncSwitch extends Switch {
             .then(this._onPayloadResolve.bind(this, navigationKey))
             .catch(this._onPayloadReject.bind(this, navigationKey));
 
-        if (typeof this.props.renderSpinner === 'function') {
-            this.state.isSpinnerVisible = true;
-        }
-        this.setState({isWaiting: true});
+        const isWaiting = true;
+        this.setState({isWaiting});
 
         this._emitUriChange(matchObjects);
         const {onWaitStart} = this.props;
@@ -176,11 +184,9 @@ export default class AsyncSwitch extends Switch {
         }
 
         const isWaiting = false;
-        const isSpinnerVisible = false;
         this.setState({
             matchObjects,
             isWaiting,
-            isSpinnerVisible
         });
 
         const {onWaitEnd} = this.props;
@@ -194,7 +200,6 @@ export default class AsyncSwitch extends Switch {
         }
 
         this.state.isWaiting = false;
-        this.state.isSpinnerVisible = false;
         this._matchError = error;
         this._throwError();
     }
@@ -203,8 +208,10 @@ export default class AsyncSwitch extends Switch {
 AsyncSwitch.propTypes = {
     childLimit: PropTypes.number,
     getPayload: PropTypes.func.isRequired,
-    renderContent: PropTypes.func,
-    renderError: PropTypes.func,
+    errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    spinnerComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    spinnerBeforeInit: PropTypes.bool,
+    spinnerWhenWaiting: PropTypes.bool,
     minWaitTime: PropTypes.number,
     maxWaitTime: PropTypes.number,
     onUriChange: PropTypes.func,
@@ -215,7 +222,7 @@ AsyncSwitch.propTypes = {
 
 AsyncSwitch.defaultProps = {
     childLimit: 1,
-    getPayload: (matchObject) => new Promise((resolve) => resolve(matchObject)),
+    getPayload: (matchObject) => Promise.resolve(matchObject.payload),
     minWaitTime: 0,
     maxWaitTime: 60000
 };

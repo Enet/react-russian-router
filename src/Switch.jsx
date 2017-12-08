@@ -40,23 +40,24 @@ export default class Switch extends React.PureComponent {
     renderPayload (matchObject) {
         const Payload = this._extractPayloadNode(matchObject);
         const payloadProps = this._extractPayloadProps(matchObject);
-        if (Payload instanceof React.Component || typeof Payload === 'function') {
-            return <Payload {...payloadProps} />
-        } else if (Payload === undefined) {
+        return this.renderComponent(Payload, payloadProps);
+    }
+
+    renderComponent (Component, props) {
+        if (Component instanceof React.Component || typeof Component === 'function') {
+            return <Component {...props} />
+        } else if (Component === undefined) {
             return null;
-        } else if (React.isValidElement(Payload)) {
-            return React.cloneElement(Payload, payloadProps);
+        } else if (React.isValidElement(Component)) {
+            return React.cloneElement(Component, typeof Component.type === 'string' ? {
+                key: props.key
+            } : props);
         } else {
-            return Payload;
+            return Component;
         }
     }
 
     componentWillMount () {
-        const {renderContent} = this.props;
-        if (typeof renderContent === 'function') {
-            this.renderContent = renderContent;
-        }
-
         this._errorId = 0;
         this._matchError = null;
         this._onUriChange = this._onUriChange.bind(this);
@@ -114,15 +115,15 @@ export default class Switch extends React.PureComponent {
         const errorObject = {
             name: errorName,
             key: errorKey,
-            payload: this.props.renderError,
+            payload: this.props.errorComponent,
             data: null,
             error
         };
-        this.setState({
-            [section + 'Keys']: [errorKey],
-            [section + 'Objects']: [errorObject]
-        });
+
         this['_' + section + 'Error'] = null;
+        this.state[section + 'Keys'] = [errorKey];
+        this.state[section + 'Objects'] = [errorObject];
+        this.forceUpdate();
 
         const {onError} = this.props;
         const type = 'error';
@@ -148,8 +149,7 @@ Switch.contextTypes = {
 
 Switch.propTypes = {
     childLimit: PropTypes.number,
-    renderContent: PropTypes.func,
-    renderError: PropTypes.func,
+    errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     onUriChange: PropTypes.func,
     onError: PropTypes.func
 };

@@ -341,8 +341,7 @@ export default class TransitionSwitch extends Switch {
 TransitionSwitch.propTypes = {
     childLimit: PropTypes.number,
     transitionOnAppear: PropTypes.bool,
-    renderContent: PropTypes.func,
-    renderError: PropTypes.func,
+    errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     onUriChange: PropTypes.func,
     onError: PropTypes.func,
     onEnterStart: PropTypes.func,

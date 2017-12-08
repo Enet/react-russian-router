@@ -14,9 +14,9 @@ export default class FetchSwitch extends AsyncSwitch {
         super.componentWillMount();
     }
 
-    _restorePrevState () {
+    _restorePrevState (isInited) {
         this._userDataMap = this._prevUserDataMap;
-        super._restorePrevState();
+        super._restorePrevState(isInited);
     }
 
     _extractPayloadProps (matchObject) {
@@ -158,8 +158,10 @@ FetchSwitch.propTypes = {
     cacheCss: PropTypes.bool,
     extractJsPath: PropTypes.oneOfType([PropTypes.func, PropTypes.string]).isRequired,
     extractCssPath: PropTypes.oneOfType([PropTypes.func, PropTypes.string]).isRequired,
-    renderContent: PropTypes.func,
-    renderError: PropTypes.func,
+    errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    spinnerComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    minWaitTime: PropTypes.number,
+    maxWaitTime: PropTypes.number,
     onUriChange: PropTypes.func,
     onError: PropTypes.func,
     onWaitStart: PropTypes.func,
@@ -168,8 +170,8 @@ FetchSwitch.propTypes = {
 
 FetchSwitch.defaultProps = {
     childLimit: 1,
-    getPayload: (matchObject) => new Promise((resolve) => resolve(matchObject)),
-    loadData: (matchObject) => new Promise((resolve) => resolve()),
+    getPayload: (matchObject) => Promise.resolve(matchObject),
+    loadData: (matchObject) => Promise.resolve(),
     extractJsPath: '{payload}.js',
     extractCssPath: '{payload}.css'
 };
