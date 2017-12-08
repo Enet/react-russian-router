@@ -10,7 +10,17 @@ export default class Redirect extends React.PureComponent {
 
     componentDidMount () {
         const {router} = this.context;
+        const redirectChain = router.getRedirectChain();
         const uri = this._generateUri();
+
+        if (redirectChain.indexOf(uri) !== -1) {
+            let redirectError = 'Redirect loop was detected!\n';
+            redirectError += redirectChain.join('\n');
+            redirectError += '\n' + uri + ' again...';
+            throw redirectError;
+        }
+
+        router.increaseRedirectChain(uri);
         if (this.props.action === 'push') {
             router.pushUri(uri);
         } else {

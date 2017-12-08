@@ -73,10 +73,12 @@ export default class Switch extends React.PureComponent {
     componentDidUpdate () {
         if (!this._matchError) {
             this._restoreScroll();
+            const {router} = this.context;
+            router.resetRedirectChain();
             return;
         }
         this._errorId++;
-        this._matchError && this._throwError();
+        this._throwError();
     }
 
     componentWillUnmount () {

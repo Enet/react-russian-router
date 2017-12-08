@@ -70,6 +70,8 @@ export default class AsyncSwitch extends Switch {
 
         // If rendering has gone without errors, cache renderedMatchObjects
         this._prevMatchObjects = renderedMatchObjects;
+        const {router} = this.context;
+        router.resetRedirectChain();
     }
 
     _initSwitch () {
