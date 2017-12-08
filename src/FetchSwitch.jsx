@@ -8,9 +8,15 @@ const jsId = 'ReactRussianRouter/FetchSwitch/JsNode';
 export default class FetchSwitch extends AsyncSwitch {
     componentWillMount () {
         this._userDataMap = new Map();
+        this._prevUserDataMap = this._userDataMap;
         this._cachedCss = {};
         this._cachedJs = {};
         super.componentWillMount();
+    }
+
+    _restorePrevState () {
+        this._userDataMap = this._prevUserDataMap;
+        super._restorePrevState();
     }
 
     _extractPayloadProps (matchObject) {
@@ -23,6 +29,7 @@ export default class FetchSwitch extends AsyncSwitch {
         const userDataMap = new Map();
         return super._getPayload(matchObjects, payloadMap, userDataMap)
             .then((matchObjects) => {
+                this._prevUserDataMap = this._userDataMap;
                 this._userDataMap = userDataMap;
                 return matchObjects;
             });
@@ -138,11 +145,6 @@ export default class FetchSwitch extends AsyncSwitch {
         jsNode.id = jsId;
         jsNode.innerHTML = jsCode;
         document.head.appendChild(jsNode);
-    }
-
-    _onUriChange () {
-        this._userDataMap = new Map();
-        super._onUriChange();
     }
 }
 

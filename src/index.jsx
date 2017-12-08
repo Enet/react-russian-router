@@ -8,6 +8,8 @@ import Link from './Link';
 import MatchLink from './MatchLink';
 import RussianLink from './RussianLink';
 import RussianMatchLink from './RussianMatchLink';
+import Redirect from './Redirect';
+import RussianRedirect from './RussianRedirect';
 
 export {
     ReactRussianRouter,
@@ -19,7 +21,9 @@ export {
     Link,
     MatchLink,
     RussianLink,
-    RussianMatchLink
+    RussianMatchLink,
+    Redirect,
+    RussianRedirect
 };
 
 export default ReactRussianRouter;

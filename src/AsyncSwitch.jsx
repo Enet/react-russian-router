@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Switch from './Switch';
+import Redirect from './Redirect';
 
 export default class AsyncSwitch extends Switch {
     constructor () {
@@ -11,6 +12,10 @@ export default class AsyncSwitch extends Switch {
 
     render () {
         if (this.state.isSpinnerVisible) {
+            return this.renderSpinner();
+        }
+        if (this.state.matchObjects === this._prevMatchObjects && !this.state.matchObjects.length) {
+            {/* Usually it's a case when error page is loaded and immediately redirects to another uri */}
             return this.renderSpinner();
         }
         return super.render();
@@ -29,9 +34,45 @@ export default class AsyncSwitch extends Switch {
             console.warn('You didn\'t provide getPayload function. Most likely it means that you don\'t need AsyncSwitch.');
         }
 
+        this._prevMatchObjects = this.state.matchObjects;
         this._payloadMap = new Map();
-        this._navigationId = 0;
+        this._prevPayloadMap = this._payloadMap;
         super.componentWillMount();
+    }
+
+    componentDidUpdate () {
+        super.componentDidUpdate();
+
+        // All the code below restores previous state to avoid flashes during redirect
+        if (this.state.isWaiting) {
+            return;
+        }
+        const currentMatchObjects = this._getMatchObjects();
+        const renderedMatchObjects = this.state.matchObjects;
+        if (!renderedMatchObjects.length) {
+            return;
+        }
+        // Rendering errors is wily, be careful with it
+        if (!currentMatchObjects.length &&
+            renderedMatchObjects[0] &&
+            renderedMatchObjects[0].hasOwnProperty('error')) {
+            return;
+        }
+        for (let r = 0, rl = renderedMatchObjects.length; r < rl; r++) {
+            if (renderedMatchObjects[r] !== currentMatchObjects[r]) {
+                this._restorePrevState();
+                return;
+            }
+        }
+
+        this._prevMatchObjects = renderedMatchObjects;
+    }
+
+    _restorePrevState () {
+        this._payloadMap = this._prevPayloadMap;
+        this.setState({
+            matchObjects: this._prevMatchObjects
+        });
     }
 
     _restoreScroll () {
@@ -48,20 +89,13 @@ export default class AsyncSwitch extends Switch {
         return this._payloadMap.get(matchObject);
     }
 
-    _getMatchObjects () {
-        if (this._matchObjects) {
-            return this._matchObjects;
-        }
-
+    _getNavigationKey () {
         const {router} = this.context;
-        const matchObjects = router.getMatchObjects();
-        this._matchObjects = matchObjects;
-        return matchObjects;
+        return router.getNavigationKey();
     }
 
     _getPayload (matchObjects, ...optionalMaps) {
         const matchObjectPromises = matchObjects
-            .slice(0, Math.max(0, this.props.childLimit))
             .map((matchObject) => this._matchObjectToPromise(matchObject, optionalMaps));
         const minWaitTimePromises = [Promise.all(matchObjectPromises)];
         const minWaitTime = +this.props.minWaitTime;
@@ -83,6 +117,7 @@ export default class AsyncSwitch extends Switch {
 
         return Promise.race(maxWaitTimePromises)
             .then((matchObjects) => {
+                this._prevPayloadMap = this._payloadMap;
                 this._payloadMap = optionalMaps[0];
                 return matchObjects;
             });
@@ -97,13 +132,32 @@ export default class AsyncSwitch extends Switch {
     }
 
     _onUriChange () {
-        const matchObjects = this._getMatchObjects();
-        const navigationId = ++this._navigationId;
+        const matchObjects = this._getMatchObjects().slice(0, Math.max(0, this.props.childLimit));
+        const navigationKey = this._getNavigationKey();
+
+        // Loop below looks for declarative redirects (from routes' table) and executes them
+        for (let matchObject of matchObjects) {
+            if (!matchObject.payload ||
+                !matchObject.payload.type ||
+                matchObject.payload.type !== Redirect) {
+                continue;
+            }
+            // Emulate react component (instance of Redirect)
+            const fakeRedirectInstance = Object.create(Redirect.prototype, {
+                context: {value: this.context},
+                props: {value: matchObject.payload.props}
+            });
+            // Ensure that redirect will be executed after switch is mounted
+            this.setState({}, () => {
+                fakeRedirectInstance.componentDidMount();
+            });
+            return;
+        }
 
         const payloadMap = new Map();
         this._getPayload(matchObjects, payloadMap)
-            .then(this._onPayloadResolve.bind(this, navigationId))
-            .catch(this._onPayloadReject.bind(this, navigationId));
+            .then(this._onPayloadResolve.bind(this, navigationKey))
+            .catch(this._onPayloadReject.bind(this, navigationKey));
 
         if (typeof this.props.renderSpinner === 'function') {
             this.state.isSpinnerVisible = true;
@@ -116,12 +170,11 @@ export default class AsyncSwitch extends Switch {
         onWaitStart && onWaitStart({type, matchObjects});
     }
 
-    _onPayloadResolve (navigationId, matchObjects) {
-        if (navigationId !== this._navigationId) {
+    _onPayloadResolve (navigationKey, matchObjects) {
+        if (navigationKey !== this._getNavigationKey()) {
             return;
         }
 
-        this._matchObjects = null;
         const isWaiting = false;
         const isSpinnerVisible = false;
         this.setState({
@@ -135,14 +188,13 @@ export default class AsyncSwitch extends Switch {
         onWaitEnd && onWaitEnd({type, matchObjects});
     }
 
-    _onPayloadReject (navigationId, error) {
-        if (navigationId !== this._navigationId) {
+    _onPayloadReject (navigationKey, error) {
+        if (navigationKey !== this._getNavigationKey()) {
             return;
         }
 
         this.state.isWaiting = false;
         this.state.isSpinnerVisible = false;
-        this._matchObjects = null;
         this._matchError = error;
         this._throwError();
     }

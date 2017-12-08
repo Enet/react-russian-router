@@ -139,7 +139,9 @@ export default class TransitionSwitch extends Switch {
     }
 
     _makeEnter (objectKey, component) {
-        component.componentBeforeEnter && component.componentBeforeEnter();
+        component.isComponentMounted &&
+        component.componentBeforeEnter &&
+        component.componentBeforeEnter();
         if (component.componentWillEnter) {
             this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onEnterStart.bind(this, objectKey));
         } else if (component.componentDidEnter) {
@@ -150,7 +152,9 @@ export default class TransitionSwitch extends Switch {
 
     _makeLeave (objectKey, component) {
         this._onEnterComplete(objectKey);
-        component.componentBeforeLeave && component.componentBeforeLeave();
+        component.isComponentMounted &&
+        component.componentBeforeLeave &&
+        component.componentBeforeLeave();
         if (component.componentWillLeave) {
             this._componentAnimationFrames[objectKey] = requestAnimationFrame(this._onLeaveStart.bind(this, objectKey));
         } else {
@@ -214,7 +218,15 @@ export default class TransitionSwitch extends Switch {
         }
 
         const prevComponent = this._getComponentRef(objectKey);
-        this._setComponentRef(objectKey, component);
+        if (component !== prevComponent) {
+            this._setComponentRef(objectKey, component);
+            component.isComponentMounted = true;
+            const {componentWillUnmount} = component;
+            component.componentWillUnmount = () => {
+                component.isComponentMounted = false;
+                typeof componentWillUnmount === 'function' && componentWillUnmount.call(component);
+            };
+        }
         if (prevComponent) {
             return false;
         }
@@ -235,6 +247,7 @@ export default class TransitionSwitch extends Switch {
         if (+transitionDuration > 0) {
             const callbackTimer = setTimeout(this[callbackName].bind(this, objectKey), +transitionDuration);
             this._callbackTimers.push(callbackTimer);
+            return callbackTimer;
         } else {
             this[callbackName](objectKey);
         }
@@ -247,7 +260,9 @@ export default class TransitionSwitch extends Switch {
         }
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'enter';
-        component.componentWillEnter && component.componentWillEnter(this._onTransitionCallback.bind(this, '_onEnterComplete', objectKey));
+        component.isComponentMounted &&
+        component.componentWillEnter &&
+        component.componentWillEnter(this._onTransitionCallback.bind(this, '_onEnterComplete', objectKey));
 
         const {onEnterStart} = this.props;
         const {matchObjects, hiddenObjects} = this.state;
@@ -265,7 +280,9 @@ export default class TransitionSwitch extends Switch {
             return false;
         }
         this._componentStates[objectKey] = null;
-        component.componentDidEnter && component.componentDidEnter();
+        component.isComponentMounted &&
+        component.componentDidEnter &&
+        component.componentDidEnter();
 
         const {onEnterEnd} = this.props;
         const {matchObjects, hiddenObjects} = this.state;
@@ -281,7 +298,9 @@ export default class TransitionSwitch extends Switch {
         }
         this._componentAnimationFrames[objectKey] = null;
         this._componentStates[objectKey] = 'leave';
-        component.componentWillLeave && component.componentWillLeave(this._onTransitionCallback.bind(this, '_onLeaveComplete', objectKey));
+        component.isComponentMounted &&
+        component.componentWillLeave &&
+        component.componentWillLeave(this._onTransitionCallback.bind(this, '_onLeaveComplete', objectKey));
 
         const {onLeaveStart} = this.props;
         const {matchObjects, hiddenObjects} = this.state;
@@ -296,7 +315,9 @@ export default class TransitionSwitch extends Switch {
             return false;
         }
         this._componentStates[objectKey] = null;
-        component.componentDidLeave && component.componentDidLeave();
+        component.isComponentMounted &&
+        component.componentDidLeave &&
+        component.componentDidLeave();
 
         this._setComponentRef(objectKey, null);
         const objectIndex = this.state.hiddenKeys.indexOf(objectKey);
