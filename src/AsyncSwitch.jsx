@@ -53,7 +53,7 @@ export default class AsyncSwitch extends Switch {
         }
 
         const isError = renderedMatchObjects[0] && renderedMatchObjects[0].hasOwnProperty('error');
-        if (!currentMatchObjects.length && isError) {
+        if (isError && this._catchedError) {
             // If error occured, don't cache renderedMatchObjects
             return;
         }
@@ -70,8 +70,15 @@ export default class AsyncSwitch extends Switch {
 
         // If rendering has gone without errors, cache renderedMatchObjects
         this._prevMatchObjects = renderedMatchObjects;
+        this._catchedError = null;
         const {router} = this.context;
         router.resetRedirectChain();
+    }
+
+    componentDidCatch (error) {
+        this._catchedError = error;
+        this.state.isWaiting = false;
+        super.componentDidCatch(error);
     }
 
     _initSwitch () {
@@ -107,6 +114,10 @@ export default class AsyncSwitch extends Switch {
     }
 
     _getPayload (matchObjects, ...optionalMaps) {
+        if (!matchObjects.length) {
+            return Promise.reject('Switch cannot render matchObjects!');
+        }
+
         const matchObjectPromises = matchObjects
             .map((matchObject) => this._matchObjectToPromise(matchObject, optionalMaps));
         const minWaitTimePromises = [Promise.all(matchObjectPromises)];
@@ -144,7 +155,9 @@ export default class AsyncSwitch extends Switch {
     }
 
     _onUriChange () {
-        const matchObjects = this._getMatchObjects().slice(0, Math.max(0, this.props.childLimit));
+        const matchObjects = this._getMatchObjects()
+            .slice(0, Math.max(0, this.props.childLimit))
+            .filter((matchObject) => !!matchObject.payload);
         const navigationKey = this._getNavigationKey();
 
         // Loop below looks for declarative redirects (from routes' table) and executes them
@@ -202,6 +215,7 @@ export default class AsyncSwitch extends Switch {
         }
 
         this.state.isWaiting = false;
+        this._catchedError = error;
         this._matchError = error;
         this._throwError();
     }

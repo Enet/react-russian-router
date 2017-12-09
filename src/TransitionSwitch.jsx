@@ -66,16 +66,18 @@ export default class TransitionSwitch extends Switch {
     }
 
     renderContent (matchObjects) {
-        let childLimit = Infinity;
-        if (matchObjects === this.state.matchObjects) {
-            childLimit = this.props.childLimit;
-            if (!matchObjects.length) {
-                throw 'Switch cannot render matchObjects!';
-            }
-        }
-        return matchObjects
+        const childLimit = matchObjects === this.state.matchObjects ?
+            this.props.childLimit :
+            Infinity;
+        const contentNodes = matchObjects
             .slice(0, Math.max(0, childLimit))
+            .filter((matchObject) => !!matchObject.payload)
             .map((matchObject) => this.renderPayload(matchObject));
+
+        if (matchObjects === this.state.matchObjects && !contentNodes.length) {
+            throw 'Switch cannot render matchObjects!';
+        }
+        return contentNodes;
     }
 
     componentWillMount () {

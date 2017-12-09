@@ -29,12 +29,14 @@ export default class Switch extends React.PureComponent {
     }
 
     renderContent (matchObjects) {
-        if (!matchObjects.length) {
-            throw 'Switch cannot render matchObject!';
-        }
-        return matchObjects
+        const contentNodes = matchObjects
             .slice(0, Math.max(0, this.props.childLimit))
+            .filter((matchObject) => !!matchObject.payload)
             .map((matchObject) => this.renderPayload(matchObject));
+        if (!contentNodes.length) {
+            throw 'Switch cannot render matchObjects!';
+        }
+        return contentNodes;
     }
 
     renderPayload (matchObject) {
@@ -77,7 +79,11 @@ export default class Switch extends React.PureComponent {
             router.resetRedirectChain();
             return;
         }
-        this._errorId++;
+        this._throwError();
+    }
+
+    componentDidCatch (error) {
+        this._matchError = error;
         this._throwError();
     }
 
@@ -113,7 +119,7 @@ export default class Switch extends React.PureComponent {
     _throwError (section='match') {
         const error = this['_' + section + 'Error'];
         const errorName = 'ReactRussianRouter/Switch/Error';
-        const errorKey = errorName + '~' + this._errorId;
+        const errorKey = errorName + '~' + this._errorId++;
         const errorObject = {
             name: errorName,
             key: errorKey,
