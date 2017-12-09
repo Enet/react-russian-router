@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import BrowserRussianRouter from 'browser-russian-router';
 
+const pathRegExp = /\/$/;
+
 const isLeftButtonClick = (event) => {
     return event.button === 0;
 };
@@ -10,29 +12,81 @@ const isMetaKeyPressed = (event) => {
     return event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
 };
 
-const pathRegExp = /\/$/;
-
-const areStringsEqual = (linkString, routerString) => {
-    return linkString.toLowerCase() === routerString.toLowerCase();
+const queryToLowerCase = (queryObject) => {
+    const newQueryObject = {};
+    for (let q in queryObject) {
+        newQueryObject[q.toLowerCase()] = queryObject[q].toLowerCase();
+    }
+    return newQueryObject;
 };
 
-const arePathsEqual = (linkPath, routerPath) => {
-    return areStringsEqual(linkPath.replace(pathRegExp, ''), routerPath.replace(pathRegExp, ''));
+const compareStrings = (linkString, routerString, routeOptions) => {
+    if (!routeOptions.caseSensitive) {
+        linkString = linkString.toLowerCase();
+        routerString = routerString.toLowerCase();
+    }
+    return linkString === routerString;
 };
 
-const areQueriesEqual = (linkQuery, routerQuery) => {
-    if (Object.keys(linkQuery).length < Object.keys(routerQuery).length) {
+const compareProtocols = (linkProtocol, routerProtocol) => {
+    if (!linkProtocol) {
+        return true;
+    }
+    return compareStrings(linkProtocol, routerProtocol, {caseSensitive: false});
+};
+
+const compareDomains = (linkDomain, routerDomain) => {
+    if (!linkDomain) {
+        return true;
+    }
+    return compareStrings(linkDomain, routerDomain, {caseSensitive: false});
+};
+
+const comparePorts = (linkPort, routerPort) => {
+    return compareStrings(linkPort, routerPort, {caseSensitive: false});
+};
+
+const comparePaths = (linkPath, routerPath, routeOptions) => {
+    if (!routeOptions.trailingSlashSensitive) {
+        linkPath = linkPath.replace(pathRegExp, '');
+        routerPath = routerPath.replace(pathRegExp, '');
+    }
+    return compareStrings(linkPath, routerPath, routeOptions);
+};
+
+const compareQueries = (linkQuery, routerQuery, routeOptions, isStrongMode) => {
+    if (!routeOptions.caseSensitive) {
+        linkQuery = queryToLowerCase(linkQuery);
+        routerQuery = queryToLowerCase(routerQuery);
+    }
+    const linkQueryKeys = Object.keys(linkQuery);
+    const routerQueryKeys = Object.keys(routerQuery);
+    if (routerQueryKeys.length < linkQueryKeys.length) {
         return false;
     }
-    for (let r in routerQuery) {
-        if (!areStringsEqual(linkQuery[r], routerQuery[r])) {
+    if (isStrongMode && linkQueryKeys.sort().join() !== routerQueryKeys.sort().join()) {
+        return false;
+    }
+
+    for (let l in linkQuery) {
+        if (routerQuery[l] === undefined) {
+            return false;
+        }
+        if (linkQuery[l] !== routerQuery[l]) {
             return false;
         }
     }
     return true;
 };
 
-export default class Link extends React.PureComponent {
+const compareHashes = (linkHash, routerHash, routeOptions, isStrongMode) => {
+    if (!linkHash && !isStrongMode) {
+        return true;
+    }
+    return compareStrings(linkHash, routerHash, routeOptions);
+};
+
+export default class Link extends React.Component {
     render () {
         const href = this._generateUri();
         const props = Object.assign({}, this.props);
@@ -50,6 +104,34 @@ export default class Link extends React.PureComponent {
         </a>
     }
 
+    shouldComponentUpdate (nextProps) {
+        const {router} = this.context;
+        const navigationKey = router.getNavigationKey();
+        if (navigationKey !== this._navigationKey) {
+            this._navigationKey = navigationKey;
+            return true;
+        }
+
+        const {props} = this;
+        const keys = Object.keys(props);
+        const nextKeys = Object.keys(nextProps);
+        if (keys.length !== nextKeys.length) {
+            return true;
+        }
+        for (let nextKey of nextKeys) {
+            if (nextProps[nextKey] !== props[nextKey]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    componentWillMount () {
+        const {router} = this.context;
+        this._navigationKey = router.getNavigationKey();
+    }
+
     _getClassName () {
         const {className} = this.props;
         return (className || '') + '';
@@ -65,7 +147,7 @@ export default class Link extends React.PureComponent {
         return router.generateUri(name, params);
     }
 
-    _isMatched () {
+    _isMatched (isStrongMode=false) {
         const {router} = this.context;
         const linkParsedRoutes = {};
         const linkHref = this._generateUri();
@@ -88,17 +170,19 @@ export default class Link extends React.PureComponent {
         });
 
         for (let routeName in linkMatchObjectsByName) {
+            const routeOptions = router.getParsedRoutes()[routeName].getParsedOptions();
             const linkMatchObject = linkMatchObjectsByName[routeName];
             const routerMatchObject = routerMatchObjectsByName[routeName];
-            if (areStringsEqual(linkMatchObject.protocol, routerMatchObject.protocol) &&
-                areStringsEqual(linkMatchObject.domain, routerMatchObject.domain) &&
-                areStringsEqual(linkMatchObject.port, routerMatchObject.port) &&
-                arePathsEqual(linkMatchObject.path, routerMatchObject.path) &&
-                areQueriesEqual(linkMatchObject.query, routerMatchObject.query) &&
-                areStringsEqual(linkMatchObject.hash, routerMatchObject.hash)) {
+            if (compareProtocols(linkMatchObject.protocol, routerMatchObject.protocol, routeOptions) &&
+                compareDomains(linkMatchObject.domain, routerMatchObject.domain, routeOptions) &&
+                comparePorts(linkMatchObject.port, routerMatchObject.port, routeOptions) &&
+                comparePaths(linkMatchObject.path, routerMatchObject.path, routeOptions) &&
+                compareQueries(linkMatchObject.query, routerMatchObject.query, routeOptions, isStrongMode) &&
+                compareHashes(linkMatchObject.hash, routerMatchObject.hash, routeOptions, isStrongMode)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -121,7 +205,7 @@ export default class Link extends React.PureComponent {
         }
 
         event.preventDefault();
-        if (!this.props.actionIfMatched && this._isMatched()) {
+        if (!this.props.actionIfMatched && this._isMatched(true)) {
             return;
         }
         const {router} = this.context;
