@@ -1,41 +1,64 @@
 {
   "name": "react-russian-router",
   "version": "0.0.1",
-  "description": "Universal javascript react-router for browser environment",
+  "description": "Universal javascript react-router for browser and server environments",
   "main": "lib/index.js",
-  "author": "Stepan Zhevak <enet@protonmail.ch> (https://zhevak.name)",
+  "author": "Stepan Zhevak <enet@protonmail.ch> (https://zhevak.name/)",
   "license": "SEE LICENSE IN LICENSE.md",
   "private": false,
+  "repository": "react-russian-router",
   "keywords": [
+    "declarative",
+    "browser",
+    "client",
+    "server",
+    "node",
     "react",
     "russian",
     "router",
     "route",
     "routing",
     "history",
-    "spa"
+    "spa",
+    "singlepage",
+    "generate",
+    "match",
+    "uri",
+    "url"
   ],
   "peerDependencies": {
     "react": "*"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-eslint": "^8.0.3",
+    "babel-jest": "^21.2.0",
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
+    "eslint": "^4.13.0",
     "jest": "^21.2.1",
+    "jest-cli": "^21.2.1",
     "react": "^16.0.0",
+    "regenerator-runtime": "^0.11.1",
     "webpack": "^3.9.1"
   },
   "dependencies": {
     "prop-types": "^15.6.0",
-    "browser-russian-router": "file:./node_modules/browser-russian-router"
+    "browser-russian-router": "^0.0.1",
+    "server-russian-router": "^0.0.1"
   },
   "scripts": {
-    "clean": "rm -rf lib dist",
-    "bundle": "webpack --output-filename=dist/react-russian-router.js",
-    "babel": "babel src --out-dir lib",
-    "test": "",
-    "prepublish": "npm test && npm run clean && npm run babel && npm run bundle"
+    "clean": "npm run clean:lib && npm run clean:dist",
+    "clean:lib": "rm -rf ./lib",
+    "clean:dist": "rm -rf ./dist",
+    "build": "npm run build:lib && npm run build:dist",
+    "build:lib": "babel src --out-dir ./lib",
+    "build:dist": "webpack && webpack --output-filename=./dist/react-russian-router.min.js -p",
+    "watch:lib": "babel src --watch --out-dir ./lib",
+    "watch:dist": "webpack --watch",
+    "test": "eslint ./src && jest",
+    "prepublish": "npm test && npm run clean && npm run build"
   }
 }

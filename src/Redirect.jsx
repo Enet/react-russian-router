@@ -1,11 +1,23 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import BrowserRussianRouter from 'browser-russian-router';
+import UniversalRussianRouter from './UniversalRussianRouter';
 import Link from './Link';
 
 export default class Redirect extends React.PureComponent {
     render () {
         return null;
+    }
+
+    componentWillMount () {
+        if (typeof window !== 'undefined') {
+            return;
+        }
+        const {feedback} = this.context;
+        if (!feedback || feedback.redirect) {
+            return;
+        }
+        const uri = this._generateUri();
+        feedback.redirect = uri;
     }
 
     componentDidMount () {
@@ -17,7 +29,7 @@ export default class Redirect extends React.PureComponent {
             let redirectError = 'Redirect loop was detected!\n';
             redirectError += redirectChain.join('\n');
             redirectError += '\n' + uri + ' again...';
-            throw redirectError;
+            throw new Error(redirectError);
         }
 
         router.increaseRedirectChain(uri);
@@ -34,7 +46,8 @@ export default class Redirect extends React.PureComponent {
 }
 
 Redirect.contextTypes = {
-    router: PropTypes.instanceOf(BrowserRussianRouter)
+    router: PropTypes.instanceOf(UniversalRussianRouter),
+    feedback: PropTypes.object
 };
 
 Redirect.propTypes = {

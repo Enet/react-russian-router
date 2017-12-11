@@ -4,6 +4,7 @@ import TransitionSwitch from './TransitionSwitch';
 import ProgressSwitch from './ProgressSwitch';
 import AsyncSwitch from './AsyncSwitch';
 import FetchSwitch from './FetchSwitch';
+import ServerSwitch from './ServerSwitch';
 import Link from './Link';
 import MatchLink from './MatchLink';
 import RussianLink from './RussianLink';
@@ -18,6 +19,7 @@ export {
     ProgressSwitch,
     AsyncSwitch,
     FetchSwitch,
+    ServerSwitch,
     Link,
     MatchLink,
     RussianLink,

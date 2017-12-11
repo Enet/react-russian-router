@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import BrowserRussianRouter from 'browser-russian-router';
+import UniversalRussianRouter from './UniversalRussianRouter';
 
 export default class ReactRussianRouter extends React.PureComponent {
     render () {
@@ -9,12 +9,13 @@ export default class ReactRussianRouter extends React.PureComponent {
 
     getChildContext () {
         const router = this._router;
-        return {router};
+        const {feedback} = this.props;
+        return {router, feedback};
     }
 
     componentWillMount () {
         const {routes, options} = this.props;
-        const router = new BrowserRussianRouter(routes, options);
+        const router = new UniversalRussianRouter(routes, options, this.props.request);
         let redirectChain = [];
         router.resetRedirectChain = () => redirectChain = [];
         router.getRedirectChain = () => redirectChain;
@@ -47,7 +48,8 @@ export default class ReactRussianRouter extends React.PureComponent {
 }
 
 ReactRussianRouter.childContextTypes = {
-    router: PropTypes.instanceOf(BrowserRussianRouter)
+    router: PropTypes.instanceOf(UniversalRussianRouter),
+    feedback: PropTypes.object
 };
 
 ReactRussianRouter.propTypes = {
@@ -58,6 +60,8 @@ ReactRussianRouter.propTypes = {
         options: PropTypes.object
     })),
     options: PropTypes.object,
+    request: PropTypes.object,
+    feedback: PropTypes.object,
     onUriChange: PropTypes.func
 };
 

@@ -216,7 +216,7 @@ export default class AsyncSwitch extends Switch {
 
         this.state.isWaiting = false;
         this._catchedError = error;
-        this._matchError = error;
+        this._matchError = (error || '') + '';
         this._throwError();
     }
 }
@@ -225,6 +225,7 @@ AsyncSwitch.propTypes = {
     childLimit: PropTypes.number,
     getPayload: PropTypes.func.isRequired,
     errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    initialError: PropTypes.any,
     spinnerComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     spinnerBeforeInit: PropTypes.bool,
     spinnerWhenWaiting: PropTypes.bool,

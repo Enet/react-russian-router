@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import BrowserRussianRouter from 'browser-russian-router';
+import UniversalRussianRouter from './UniversalRussianRouter';
 
 export default class Switch extends React.PureComponent {
     constructor () {
@@ -23,7 +23,7 @@ export default class Switch extends React.PureComponent {
     }
 
     renderError (matchObjects, error) {
-        this._matchError = error;
+        this._matchError = (error || '') + '';
         console.error(error);
         return null;
     }
@@ -34,7 +34,7 @@ export default class Switch extends React.PureComponent {
             .filter((matchObject) => !!matchObject.payload)
             .map((matchObject) => this.renderPayload(matchObject));
         if (!contentNodes.length) {
-            throw 'Switch cannot render matchObjects!';
+            throw new Error('Switch cannot render matchObjects!');
         }
         return contentNodes;
     }
@@ -61,9 +61,13 @@ export default class Switch extends React.PureComponent {
 
     componentWillMount () {
         this._errorId = 0;
-        this._matchError = null;
+        this._matchError = (this.props.initialError || '') + '';
         this._onUriChange = this._onUriChange.bind(this);
-        this._onUriChange();
+        if (this._matchError) {
+            this._throwError();
+        } else {
+            this._onUriChange();
+        }
     }
 
     componentDidMount () {
@@ -83,7 +87,7 @@ export default class Switch extends React.PureComponent {
     }
 
     componentDidCatch (error) {
-        this._matchError = error;
+        this._matchError = (error || '') + '';
         this._throwError();
     }
 
@@ -152,12 +156,13 @@ export default class Switch extends React.PureComponent {
 }
 
 Switch.contextTypes = {
-    router: PropTypes.instanceOf(BrowserRussianRouter).isRequired
+    router: PropTypes.instanceOf(UniversalRussianRouter).isRequired
 };
 
 Switch.propTypes = {
     childLimit: PropTypes.number,
     errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    initialError: PropTypes.any,
     onUriChange: PropTypes.func,
     onError: PropTypes.func
 };

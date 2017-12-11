@@ -3,4 +3,3 @@ dist/
 lib/
 *-debug.log
 *.todo
-*.lock

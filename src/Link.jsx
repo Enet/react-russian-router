@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import BrowserRussianRouter from 'browser-russian-router';
+import UniversalRussianRouter from './UniversalRussianRouter';
 
 const pathRegExp = /\/$/;
 
@@ -219,7 +219,7 @@ export default class Link extends React.Component {
 }
 
 Link.contextTypes = {
-    router: PropTypes.instanceOf(BrowserRussianRouter).isRequired
+    router: PropTypes.instanceOf(UniversalRussianRouter).isRequired
 };
 
 Link.propTypes = {

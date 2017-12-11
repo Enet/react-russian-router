@@ -57,9 +57,9 @@ export default class TransitionSwitch extends Switch {
 
     renderError (matchObjects, error) {
         if (matchObjects === this.state.matchObjects) {
-            this._matchError = error;
+            this._matchError = (error || '') + '';
         } else {
-            this._hiddenError = error;
+            this._hiddenError = (error || '') + '';
         }
         console.error(error);
         return null;
@@ -75,7 +75,7 @@ export default class TransitionSwitch extends Switch {
             .map((matchObject) => this.renderPayload(matchObject));
 
         if (matchObjects === this.state.matchObjects && !contentNodes.length) {
-            throw 'Switch cannot render matchObjects!';
+            throw new Error('Switch cannot render matchObjects!');
         }
         return contentNodes;
     }
@@ -344,6 +344,7 @@ TransitionSwitch.propTypes = {
     childLimit: PropTypes.number,
     transitionOnAppear: PropTypes.bool,
     errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    initialError: PropTypes.any,
     onUriChange: PropTypes.func,
     onError: PropTypes.func,
     onEnterStart: PropTypes.func,
