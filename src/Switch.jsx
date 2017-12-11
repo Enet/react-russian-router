@@ -24,6 +24,7 @@ export default class Switch extends React.PureComponent {
 
     renderError (matchObjects, error) {
         this._matchError = (error || '') + '';
+        // eslint-disable-next-line
         console.error(error);
         return null;
     }

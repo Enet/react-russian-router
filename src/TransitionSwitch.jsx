@@ -61,6 +61,7 @@ export default class TransitionSwitch extends Switch {
         } else {
             this._hiddenError = (error || '') + '';
         }
+        // eslint-disable-next-line
         console.error(error);
         return null;
     }
@@ -189,7 +190,6 @@ export default class TransitionSwitch extends Switch {
         });
 
         prevMatchObjects.forEach((prevMatchObject, p) => {
-            const routeName = prevMatchObject.name;
             const objectKey = prevMatchKeys[p];
             const objectIndex = matchKeys.indexOf(objectKey);
             if (objectIndex !== -1) {

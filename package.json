@@ -38,6 +38,7 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "eslint": "^4.13.0",
+    "eslint-plugin-react": "^7.5.1",
     "jest": "^21.2.1",
     "jest-cli": "^21.2.1",
     "react": "^16.0.0",
@@ -58,7 +59,7 @@
     "build:dist": "webpack && webpack --output-filename=./dist/react-russian-router.min.js -p",
     "watch:lib": "babel src --watch --out-dir ./lib",
     "watch:dist": "webpack --watch",
-    "test": "eslint ./src && jest",
+    "test": "eslint ./src/*.jsx && jest",
     "prepublish": "npm test && npm run clean && npm run build"
   }
 }

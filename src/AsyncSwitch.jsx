@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import Switch from './Switch';
 import Redirect from './Redirect';
@@ -27,6 +26,7 @@ export default class AsyncSwitch extends Switch {
     componentWillMount () {
         const {getPayload} = this.props;
         if (getPayload === AsyncSwitch.defaultProps.getPayload) {
+            // eslint-disable-next-line
             console.warn('You didn\'t provide getPayload function. Most likely it means that you don\'t need AsyncSwitch.');
         }
 
@@ -229,7 +229,7 @@ export default class AsyncSwitch extends Switch {
         const isWaiting = false;
         this.setState({
             matchObjects,
-            isWaiting,
+            isWaiting
         });
 
         const {onWaitEnd} = this.props;

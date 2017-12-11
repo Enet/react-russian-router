@@ -229,6 +229,7 @@ Link.propTypes = {
     action: PropTypes.oneOf(['replace', 'push']),
     target: PropTypes.string,
     actionIfMatched: PropTypes.bool,
+    className: PropTypes.string,
     onClick: PropTypes.func
 };
 
