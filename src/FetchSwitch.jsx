@@ -25,9 +25,28 @@ export default class FetchSwitch extends AsyncSwitch {
         return payloadProps;
     }
 
-    _getPayload (matchObjects, payloadMap) {
+    _getInitialPayload (matchObjects, payloadMap) {
         const userDataMap = new Map();
-        return super._getPayload(matchObjects, payloadMap, userDataMap)
+        const initialMatchObjects = super._getInitialPayload(matchObjects, payloadMap, userDataMap);
+        this._prevUserDataMap = this._userDataMap;
+        this._userDataMap = userDataMap;
+        return initialMatchObjects;
+    }
+
+    _matchObjectToInitial (matchObject, optionalMaps) {
+        let userData;
+        if (this.props.initialUserData) {
+            userData = this.props.initialUserData(matchObject);
+            optionalMaps[1].set(matchObject, userData);
+        }
+        const payload = this.props.initialPayload(matchObject, userData);
+        optionalMaps[0].set(matchObject, payload);
+        return matchObject;
+    }
+
+    _getAsyncPayload (matchObjects, payloadMap) {
+        const userDataMap = new Map();
+        return super._getAsyncPayload(matchObjects, payloadMap, userDataMap)
             .then((matchObjects) => {
                 this._prevUserDataMap = this._userDataMap;
                 this._userDataMap = userDataMap;
@@ -151,6 +170,8 @@ export default class FetchSwitch extends AsyncSwitch {
 FetchSwitch.propTypes = {
     childLimit: PropTypes.number,
     getPayload: PropTypes.func.isRequired,
+    initialPayload: PropTypes.func,
+    initialUserData: PropTypes.func,
     loadJs: PropTypes.func,
     loadCss: PropTypes.func,
     loadData: PropTypes.func,

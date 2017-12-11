@@ -113,7 +113,22 @@ export default class AsyncSwitch extends Switch {
         return router.getNavigationKey();
     }
 
-    _getPayload (matchObjects, ...optionalMaps) {
+    _getInitialPayload (matchObjects, ...optionalMaps) {
+        const initialMatchObjects = matchObjects.map((matchObject) => {
+            return this._matchObjectToInitial(matchObject, optionalMaps);
+        });
+        this._prevPayloadMap = this._payloadMap;
+        this._payloadMap = optionalMaps[0];
+        return initialMatchObjects;
+    }
+
+    _matchObjectToInitial (matchObject, optionalMaps) {
+        const payload = this.props.initialPayload(matchObject);
+        optionalMaps[0].set(matchObject, payload);
+        return matchObject;
+    }
+
+    _getAsyncPayload (matchObjects, ...optionalMaps) {
         if (!matchObjects.length) {
             return Promise.reject('Switch cannot render matchObjects!');
         }
@@ -180,12 +195,25 @@ export default class AsyncSwitch extends Switch {
         }
 
         const payloadMap = new Map();
-        this._getPayload(matchObjects, payloadMap)
-            .then(this._onPayloadResolve.bind(this, navigationKey))
-            .catch(this._onPayloadReject.bind(this, navigationKey));
+
+        if (this.state.isInited || !this.props.initialPayload) {
+            this._getAsyncPayload(matchObjects, payloadMap)
+                .then(this._onPayloadResolve.bind(this, navigationKey))
+                .catch(this._onPayloadReject.bind(this, navigationKey));
+        }
 
         const isWaiting = true;
         this.setState({isWaiting});
+
+        if (!this.state.isInited && this.props.initialPayload) {
+            try {
+                const initialMatchObjects = this._getInitialPayload(matchObjects, payloadMap);
+                this.state.isInited = true;
+                this._onPayloadResolve(navigationKey, initialMatchObjects);
+            } catch (error) {
+                this._onPayloadReject(navigationKey, error);
+            }
+        }
 
         this._emitUriChange(matchObjects);
         const {onWaitStart} = this.props;
@@ -224,6 +252,7 @@ export default class AsyncSwitch extends Switch {
 AsyncSwitch.propTypes = {
     childLimit: PropTypes.number,
     getPayload: PropTypes.func.isRequired,
+    initialPayload: PropTypes.func,
     errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     initialError: PropTypes.any,
     spinnerComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
