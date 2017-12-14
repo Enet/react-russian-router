@@ -51,9 +51,13 @@ Or you can add **UMD** bundle just to your HTML code:
 ```
 
 # :one: API
-Since react-russian-router only extends capabilities of [russian-router](https://github.com/Enet/russian-router), [browser-russian-router](https://github.com/Enet/browser-russian-router), and [server-russian-router](https://github.com/Enet/server-russian-router), it's strongly recommended to read original documentation before usage.
+Since react-russian-router only extends capabilities of [russian-router](https://github.com/Enet/russian-router), [browser-russian-router](https://github.com/Enet/browser-russian-router) and [server-russian-router](https://github.com/Enet/server-russian-router), it's strongly recommended to read original documentations before usage.
 
 The package contains a bunch of react-components, therefore description of each is a list of available props.
+
+Be aware, `ReactRussianRouter` extends `React.PureComponent` and isn't an instance of `RussianRouter`. Instead of that it creates a new router internally and provides one via context. Most likely you don't need to interact with react-russian-router itself. Also be careful with links and switches, because all of them require `context.router`. So it's a good idea to render the router closer to the root of your react-tree.
+
+The main idea of [russian-router](https://github.com/Enet/russian-router) is declarative configuration, located in a single file. Thus if you want to render router inside router, switch inside switch or do some another weird things, please, don't do that. Such cases are never been tested and most likely won't. Try to use only instance of `ReactRussianRouter`, only instance of `Switch` and absolute paths for routes. It will be the most stable and transparent configuration.
 
 ## :cherries: `ReactRussianRouter`
 #### `routes` : object = `{}`
@@ -69,9 +73,11 @@ If react-russian-router is used on the server, it's required to pass `request` f
 Feedback is an object for writing important information during rendering. It's usually used on the server to realize SSR. After render it could contain array `matchObjects` and string `redirect`.
 
 #### `onUriChange({type, reason, navigationKey})` : func = `null`
-Callback, called after uri is changed. Accordingly, it's called on the browser only, because server-russian-router doesn't know about navigation.
+Callback, called after uri is changed. Accordingly, it's called on the browser only, because [server-russian-router](https://github.com/Enet/server-russian-router) doesn't know about navigation.
 
 ## :watermelon: `Switch`
+This is a component to render payload of matched routes. It has no animated transitions and doesn't know, how to fetch new data over the network. `Switch` just renders original payload from routes' table.
+
 #### `childLimit` : number = `1`
 Max number of visible `matchObjects`. Likely you don't need to render more than 1 pages at the same time.
 
@@ -88,6 +94,10 @@ Callback, called after uri is changed. Note the different signature in compariso
 Callback, called after error is occured.
 
 ## :banana: `TransitionSwitch extends Switch`
+If you need animated transitions between entry points, `TransitionSwitch` is your lifesaver. It calls magical hooks like `componentBeforeEnter`, `componentWillEnter`, `componentDidEnter`, `componentBeforeLeave`, `componentWillLeave` and `componentDidLeave` for each of your payload's components.
+
+Don't forget, the switch isn't aware, when the transition should be finished. So you must call a `callback`, which is the first argument of `componentWillEnter` and `componentWillLeave`. Only after callback is called, `componentDidEnter` and `componentDidLeave` will be executed.
+
 #### `transitionOnAppear` : bool = `false`
 Should `TransitionSwitch` animate initial render or not? By default initial transition is disabled.
 
@@ -104,6 +114,10 @@ Callback, called for each component after leave transition is started.
 Callback, called for each component after leave transition is ended.
 
 ## :pineapple: `ProgressSwitch extends TransitionSwitch`
+Sometimes you need synchronized animated transitions, when the component's state is a function of time. `ProgressSwitch` solves exactly those cases. All the transitions have the same duration, and each component gets `transitionProgress` prop. That prop can be used to animate CSS styles or make another interesting effects.
+
+Remember, that callback from `componentWillEnter` and `componentWillLeave` doesn't make sense here, because the switch knows, when the transition is finished.
+
 #### `transitionDuration` : number = `1000`
 All transitions inside `ProgressSwitch` have the same duration, which could be changed via this prop.
 
@@ -111,6 +125,10 @@ All transitions inside `ProgressSwitch` have the same duration, which could be c
 Function, which transforms the original progress value from `0` up to `100`. It must return `0` for `0` and `100` for `100`.
 
 ## :eggplant: `AsyncSwitch extends Switch`
+This switch is designed for getting components to be rendered asynchronously. It's incredibly useful to realize the code splitting, when `index.html` loads resources for one page only.
+
+But `AsyncSwitch` doesn't know about the network, scripts and styles, it only allows to extract your component from `matchObject` inside the promise. If you use SSR with the switch, take a look at the prop `initialPayload`.
+
 #### `getPayload(matchObject)` : func = `(matchObject) => Promise.resolve(matchObject.payload)`
 Asynchronous getter for payload by original `matchObject` from the routes' table. It must return promise!
 
@@ -139,6 +157,16 @@ Callback, called when waiting for payload has started.
 Callback, called when waiting for payload has ended.
 
 ## :grapes: `FetchSwitch extends AsyncSwitch`
+This is the switch, which loads all the resources, required to render a new entry point. It works like a charm:
+1. Extracts JS and CSS pathes from `matchObject`.
+2. Loads all the resources in parallel.
+    - Looks for cached JS and CSS files or loads files using `fetch`.
+    - Loads user's data.
+3. When the resources are ready to use, it gets payload asynchronously.
+4. Renders payload.
+
+Despite of the complexity, `FetchSwitch` is a very flexible component. You can replace any step and adapt the switch for your own needs. If you use SSR, take a look at the props `initialPayload` and `initialUserData`.
+
 #### `extractJsPath(matchObject)` : string or func = `{payload}.js`
 Function to generate path to JS code by `matchObject`. Also string can be passed. Placeholders `{payload}`, `{payload.abc}`, `{payload.Abc}` and `{payload.ABC}` will be replaced with `matchObject.payload` in different letter cases.
 
@@ -164,9 +192,13 @@ Asynchronous loader of custom user data, that is connected with entry point. It 
 Synchronous loader of custom user data for first render to avoid flash of content after SSR. If SSR isn't used, you don't need this prop.
 
 ## :strawberry: `ServerSwitch extends Switch`
-There are no custom props for `ServerSwitch`.
+There are no custom props for `ServerSwitch`, but this is only switch, that writes array `matchObjects` to `context.feedback`. Don't use another switches on the server!
+
+Also don't forget to pass `request` to the router, if you implement SSR.
 
 ## :pear: `Link`
+You have to use this component to create the links in your SPA. The fact it uses `pushUri` and `replaceUri` from [browser-russian-router](https://github.com/Enet/browser-russian-router) allows the router to handle navigation correctly.
+
 #### `name` : string = `null`
 Route's name to generate link's href. If not specified, the prop `href` is used.
 
@@ -176,7 +208,7 @@ Route's params to generate link's href. If `name` isn't specified, the prop does
 #### `href` : string = `null`
 Prop is used only if `name` isn't specified. Just HTML attribute for the link.
 
-#### `action` : oneOf(`['replace', 'push']`) = `'push'`
+#### `action` : one of `'replace'` or `'push'` = `'push'`
 Action, executed with the history when the link is clicked.
 
 #### `actionIfMatched` : bool = `false`
@@ -192,6 +224,10 @@ It's the same `Link`, which uses its own props as parameters to generate uri. Wh
 Here is the same `RussianLink`, but adds `match` class to CSS, when the current location matches a link's href.
 
 ## :green_apple: `Redirect`
+Redirect is the universal component, that has slightly different behaviour on the server and in the browser. On the server it only writes its uri to `context.feedback.redirect` (only first redirect is applied). In the browser it modifies the history using `action` method.
+
+For both environments redirects in the routes' table are preferred opposite to redirects in rendered components. It makes the routing more stable and predictable in the process of development.
+
 #### `name` : string = `null`
 Route's name to generate uri for the redirect. If not specified, the prop `href` is used.
 
@@ -201,7 +237,7 @@ Route's params to generate uri for the redirect. If `name` isn't specified, the 
 #### `href` : string = `null`
 Prop is used only if `name` isn't specified. It's the uri for the redirect.
 
-#### `action` : oneOf(`['replace', 'push']`) = `'push'`
+#### `action` : one of `'replace'` or `'push'` = `'push'`
 Action, executed with the history when the redirect is occured.
 
 ## :apple: `RussianRedirect extends Redirect`
