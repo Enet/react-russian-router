@@ -117,10 +117,10 @@ export default class FetchSwitch extends AsyncSwitch {
     }
 
     _getUserDataPromise (matchObject) {
-        if (!this.props.loadData) {
+        if (!this.props.loadUserData) {
             return Promise.resolve(null);
         }
-        return this.props.loadData(matchObject);
+        return this.props.loadUserData(matchObject);
     }
 
     _appendCss (cssCode, matchObject, userData) {
@@ -170,10 +170,10 @@ FetchSwitch.propTypes = {
     childLimit: PropTypes.number,
     getPayload: PropTypes.func.isRequired,
     initialPayload: PropTypes.func,
+    loadUserData: PropTypes.func,
     initialUserData: PropTypes.func,
     loadJs: PropTypes.func,
     loadCss: PropTypes.func,
-    loadData: PropTypes.func,
     cacheJs: PropTypes.bool,
     cacheCss: PropTypes.bool,
     extractJsPath: PropTypes.oneOfType([PropTypes.func, PropTypes.string]).isRequired,
@@ -194,7 +194,6 @@ FetchSwitch.propTypes = {
 FetchSwitch.defaultProps = {
     childLimit: 1,
     getPayload: (matchObject) => Promise.resolve(matchObject),
-    loadData: (matchObject) => Promise.resolve(),
     extractJsPath: '{payload}.js',
     extractCssPath: '{payload}.css'
 };
