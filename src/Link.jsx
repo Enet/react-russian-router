@@ -1,8 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import UniversalRussianRouter from './UniversalRussianRouter';
+import {
+    utils
+} from 'russian-router';
 
 const pathRegExp = /\/$/;
+const Protocol = utils.getPartConstructor('protocol');
+const Domain = utils.getPartConstructor('domain');
+const Port = utils.getPartConstructor('port');
 
 const isLeftButtonClick = (event) => {
     return event.button === 0;
@@ -147,6 +153,29 @@ export default class Link extends React.Component {
         return router.generateUri(name, params);
     }
 
+    _isAnotherResource () {
+        const {router} = this.context;
+        const linkUri = this._generateUri().trim();
+        const splittedLinkUri = utils.splitUri(linkUri, utils.getRegExp('uri'));
+
+        const protocol = splittedLinkUri.protocol;
+        const domain = splittedLinkUri.domain;
+        const port = utils.getPortByParsedUri({
+            protocol: new Protocol(protocol),
+            domain: new Domain(domain),
+            port: new Port(splittedLinkUri.port)
+        }, {router}).toString();
+
+        const defaultProtocol = router.getDefaultPart('protocol');
+        const defaultDomain = router.getDefaultPart('domain');
+        const defaultPort = router.getDefaultPart('port');
+
+        return false ||
+            !compareProtocols(protocol || '', defaultProtocol.toString()) ||
+            !compareDomains(domain || '', defaultDomain.toString()) ||
+            !comparePorts(port || '', defaultPort.toString());
+    }
+
     _isMatched (isStrongMode=false) {
         const {router} = this.context;
         const linkParsedRoutes = {};
@@ -201,6 +230,9 @@ export default class Link extends React.Component {
             return;
         }
         if (isMetaKeyPressed(event)) {
+            return;
+        }
+        if (this._isAnotherResource()) {
             return;
         }
 
