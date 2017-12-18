@@ -24,15 +24,15 @@ export default class AsyncSwitch extends Switch {
     }
 
     componentWillMount () {
-        const {getPayloadPromise} = this.props;
-        if (getPayloadPromise === AsyncSwitch.defaultProps.getPayloadPromise) {
+        const {loadPayload} = this.props;
+        if (loadPayload === AsyncSwitch.defaultProps.loadPayload) {
             // eslint-disable-next-line
-            console.warn('You didn\'t provide getPayloadPromise function. Most likely it means that you don\'t need AsyncSwitch.');
+            console.warn('You didn\'t provide loadPayload function. Most likely it means that you don\'t need AsyncSwitch.');
         }
 
         this._prevMatchObjects = this.state.matchObjects;
-        this._payloadMap = new Map();
-        this._prevPayloadMap = this._payloadMap;
+        this._dataMap = new Map();
+        this._prevDataMap = this._dataMap;
         this._catchedError = this.props.initialError;
         super.componentWillMount();
     }
@@ -88,7 +88,7 @@ export default class AsyncSwitch extends Switch {
     }
 
     _restorePrevState (isInited) {
-        this._payloadMap = this._prevPayloadMap;
+        this._dataMap = this._prevDataMap;
         this.setState({
             isInited,
             matchObjects: this._prevMatchObjects
@@ -102,11 +102,17 @@ export default class AsyncSwitch extends Switch {
         super._restoreScroll(...arguments);
     }
 
+    _modifyDataMap (dataMap, matchObject, mergeObject) {
+        const dataObject = dataMap.get(matchObject) || {};
+        Object.assign(dataObject, mergeObject);
+        dataMap.set(matchObject, dataObject);
+    }
+
     _extractPayloadNode (matchObject) {
         if (matchObject.hasOwnProperty('error')) {
             return matchObject.payload;
         }
-        return this._payloadMap.get(matchObject);
+        return this._dataMap.get(matchObject).payload;
     }
 
     _getNavigationKey () {
@@ -114,28 +120,28 @@ export default class AsyncSwitch extends Switch {
         return router.getNavigationKey();
     }
 
-    _getInitialPayload (matchObjects, ...optionalMaps) {
+    _initMatchObjects (matchObjects, dataMap) {
         const initialMatchObjects = matchObjects.map((matchObject) => {
-            return this._matchObjectToInitial(matchObject, optionalMaps);
+            return this._matchObjectToInitial(matchObject, dataMap);
         });
-        this._prevPayloadMap = this._payloadMap;
-        this._payloadMap = optionalMaps[0];
+        this._prevDataMap = this._dataMap;
+        this._dataMap = dataMap;
         return initialMatchObjects;
     }
 
-    _matchObjectToInitial (matchObject, optionalMaps) {
-        const payload = this.props.getInitialPayload(matchObject);
-        optionalMaps[0].set(matchObject, payload);
+    _matchObjectToInitial (matchObject, dataMap) {
+        const payload = this.props.initPayload(matchObject);
+        this._modifyDataMap(dataMap, matchObject, {payload});
         return matchObject;
     }
 
-    _getAsyncPayload (matchObjects, ...optionalMaps) {
+    _loadMatchObjects (matchObjects, dataMap) {
         if (!matchObjects.length) {
             return Promise.reject('Switch cannot render matchObjects!');
         }
 
         const matchObjectPromises = matchObjects
-            .map((matchObject) => this._matchObjectToPromise(matchObject, optionalMaps));
+            .map((matchObject) => this._matchObjectToPromise(matchObject, dataMap));
         const minWaitTimePromises = [Promise.all(matchObjectPromises)];
         const minWaitTime = +this.props.minWaitTime;
         let minWaitTimer;
@@ -160,8 +166,8 @@ export default class AsyncSwitch extends Switch {
             .then((matchObjects) => {
                 clearTimeout(minWaitTimer);
                 clearTimeout(maxWaitTimer);
-                this._prevPayloadMap = this._payloadMap;
-                this._payloadMap = optionalMaps[0];
+                this._prevDataMap = this._dataMap;
+                this._dataMap = dataMap;
                 return matchObjects;
             })
             .catch((error) => {
@@ -171,10 +177,10 @@ export default class AsyncSwitch extends Switch {
             });
     }
 
-    _matchObjectToPromise (matchObject, optionalMaps) {
-        return this.props.getPayloadPromise(matchObject)
+    _matchObjectToPromise (matchObject, dataMap) {
+        return this.props.loadPayload(matchObject)
             .then((payload) => {
-                optionalMaps[0].set(matchObject, payload);
+                this._modifyDataMap(dataMap, matchObject, {payload});
                 return matchObject;
             });
     }
@@ -210,10 +216,10 @@ export default class AsyncSwitch extends Switch {
             return;
         }
 
-        const payloadMap = new Map();
+        const dataMap = new Map();
 
-        if (this.state.isInited || !this.props.getInitialPayload) {
-            this._getAsyncPayload(matchObjects, payloadMap)
+        if (this.state.isInited || !this.props.initPayload) {
+            this._loadMatchObjects(matchObjects, dataMap)
                 .then(this._onPayloadResolve.bind(this, navigationKey))
                 .catch(this._onPayloadReject.bind(this, navigationKey));
         }
@@ -226,9 +232,9 @@ export default class AsyncSwitch extends Switch {
         const type = 'waitstart';
         onWaitStart && onWaitStart({type, matchObjects});
 
-        if (!this.state.isInited && this.props.getInitialPayload) {
+        if (!this.state.isInited && this.props.initPayload) {
             try {
-                const initialMatchObjects = this._getInitialPayload(matchObjects, payloadMap);
+                const initialMatchObjects = this._initMatchObjects(matchObjects, dataMap);
                 this.state.isInited = true;
                 this._onPayloadResolve(navigationKey, initialMatchObjects);
             } catch (error) {
@@ -271,8 +277,8 @@ export default class AsyncSwitch extends Switch {
 
 AsyncSwitch.propTypes = {
     childLimit: PropTypes.number,
-    getPayloadPromise: PropTypes.func.isRequired,
-    getInitialPayload: PropTypes.func,
+    loadPayload: PropTypes.func.isRequired,
+    initPayload: PropTypes.func,
     errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     initialError: PropTypes.any,
     spinnerComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
@@ -288,7 +294,7 @@ AsyncSwitch.propTypes = {
 
 AsyncSwitch.defaultProps = {
     childLimit: 1,
-    getPayloadPromise: (matchObject) => Promise.resolve(matchObject.payload),
+    loadPayload: (matchObject) => Promise.resolve(matchObject.payload),
     minWaitTime: 0,
     maxWaitTime: 60000
 };

@@ -1,70 +1,66 @@
 import PropTypes from 'prop-types';
 import AsyncSwitch from './AsyncSwitch';
 
-const cssId = 'ReactRussianRouter/FetchSwitch/CssNode';
-const jsId = 'ReactRussianRouter/FetchSwitch/JsNode';
+const cssClassName = 'ReactRussianRouter/FetchSwitch/CssNode';
+const jsClassName = 'ReactRussianRouter/FetchSwitch/JsNode';
 
 export default class FetchSwitch extends AsyncSwitch {
     componentWillMount () {
-        this._userDataMap = new Map();
-        this._prevUserDataMap = this._userDataMap;
         this._cachedCss = {};
         this._cachedJs = {};
         super.componentWillMount();
     }
 
-    _restorePrevState (isInited) {
-        this._userDataMap = this._prevUserDataMap;
-        super._restorePrevState(isInited);
-    }
-
     _extractPayloadProps (matchObject) {
         const payloadProps = super._extractPayloadProps(matchObject);
-        payloadProps.userData = this._userDataMap.get(matchObject);
+        const dataObject = this._dataMap.get(matchObject) || {};
+        payloadProps.userData = dataObject.userData;
         return payloadProps;
     }
 
-    _getInitialPayload (matchObjects, payloadMap) {
-        const userDataMap = new Map();
-        const initialMatchObjects = super._getInitialPayload(matchObjects, payloadMap, userDataMap);
-        this._prevUserDataMap = this._userDataMap;
-        this._userDataMap = userDataMap;
-        return initialMatchObjects;
-    }
-
-    _matchObjectToInitial (matchObject, optionalMaps) {
+    _matchObjectToInitial (matchObject, dataMap) {
         let userData;
-        if (this.props.getInitialUserData) {
-            userData = this.props.getInitialUserData(matchObject);
-            optionalMaps[1].set(matchObject, userData);
+        if (this.props.initUserData) {
+            userData = this.props.initUserData(matchObject);
+            this._modifyDataMap(dataMap, matchObject, {userData});
         }
-        const payload = this.props.getInitialPayload(matchObject, userData);
-        optionalMaps[0].set(matchObject, payload);
+        const payload = this.props.initPayload(matchObject, userData);
+        this._modifyDataMap(dataMap, matchObject, {payload});
         return matchObject;
     }
 
-    _getAsyncPayload (matchObjects, payloadMap) {
-        const userDataMap = new Map();
-        return super._getAsyncPayload(matchObjects, payloadMap, userDataMap)
+    _loadMatchObjects (matchObjects, dataMap) {
+        return super._loadMatchObjects(...arguments)
             .then((matchObjects) => {
-                this._prevUserDataMap = this._userDataMap;
-                this._userDataMap = userDataMap;
+                this._appendCss(null, null);
+                this._appendJs(null, null);
+
+                matchObjects.forEach((matchObject) => {
+                    const dataObject = dataMap.get(matchObject) || {};
+                    const userData = dataObject.userData;
+                    const cssCode = dataObject.cssCode || null;
+                    const jsCode = dataObject.jsCode || null;
+
+                    this._appendCss(cssCode, matchObject, userData);
+                    this._appendJs(jsCode, matchObject, userData);
+
+                    const payload = this.props.extractPayload(matchObject, userData);
+                    this._modifyDataMap(dataMap, matchObject, {payload});
+                });
                 return matchObjects;
             });
     }
 
-    _matchObjectToPromise (matchObject, optionalMaps) {
+    _matchObjectToPromise (matchObject, dataMap) {
         const cssCodePromise = this._getCodePromise(matchObject, 'Css');
         const jsCodePromise = this._getCodePromise(matchObject, 'Js');
         const userDataPromise = this._getUserDataPromise(matchObject);
 
         return Promise.all([cssCodePromise, jsCodePromise, userDataPromise])
             .then(([cssCode, jsCode, userData]) => {
-                this._appendCss(cssCode, matchObject, userData);
-                this._appendJs(jsCode, matchObject, userData);
-                const payload = this.props.getPayload(matchObject, userData);
-                optionalMaps[0].set(matchObject, payload);
-                optionalMaps[1].set(matchObject, userData);
+                this._modifyDataMap(dataMap, matchObject, {
+                    cssCode, jsCode, userData
+                });
                 return matchObject;
             });
     }
@@ -116,10 +112,10 @@ export default class FetchSwitch extends AsyncSwitch {
     }
 
     _getUserDataPromise (matchObject) {
-        if (!this.props.getUserDataPromise) {
+        if (!this.props.loadUserData) {
             return Promise.resolve(null);
         }
-        return this.props.getUserDataPromise(matchObject);
+        return this.props.loadUserData(matchObject);
     }
 
     _appendCss (cssCode, matchObject, userData) {
@@ -128,9 +124,11 @@ export default class FetchSwitch extends AsyncSwitch {
             return appendCss(cssCode, matchObject, userData);
         }
 
-        const prevCssNode = document.getElementById(cssId);
-        if (prevCssNode) {
-            prevCssNode.parentNode.removeChild(prevCssNode);
+        if (!matchObject) {
+            const prevCssNodes = document.getElementsByClassName(cssClassName);
+            [...prevCssNodes].forEach((prevCssNode) => {
+                prevCssNode.parentNode.removeChild(prevCssNode);
+            });
         }
 
         if (!cssCode) {
@@ -138,7 +136,7 @@ export default class FetchSwitch extends AsyncSwitch {
         }
 
         const cssNode = document.createElement('style');
-        cssNode.id = cssId;
+        cssNode.className = cssClassName;
         cssNode.innerHTML = cssCode;
         document.head.appendChild(cssNode);
     }
@@ -149,9 +147,11 @@ export default class FetchSwitch extends AsyncSwitch {
             return appendJs(jsCode, matchObject, userData);
         }
 
-        const prevJsNode = document.getElementById(jsId);
-        if (prevJsNode) {
-            prevJsNode.parentNode.removeChild(prevJsNode);
+        if (!matchObject) {
+            const prevJsNodes = document.getElementsByClassName(jsClassName);
+            [...prevJsNodes].forEach((prevJsNode) => {
+                prevJsNode.parentNode.removeChild(prevJsNode);
+            });
         }
 
         if (!jsCode) {
@@ -159,7 +159,7 @@ export default class FetchSwitch extends AsyncSwitch {
         }
 
         const jsNode = document.createElement('script');
-        jsNode.id = jsId;
+        jsNode.className = jsClassName;
         jsNode.innerHTML = jsCode;
         document.head.appendChild(jsNode);
     }
@@ -174,10 +174,10 @@ export default class FetchSwitch extends AsyncSwitch {
 
 FetchSwitch.propTypes = {
     childLimit: PropTypes.number,
-    getPayload: PropTypes.func.isRequired,
-    getInitialPayload: PropTypes.func,
-    getUserDataPromise: PropTypes.func,
-    getInitialUserData: PropTypes.func,
+    extractPayload: PropTypes.func.isRequired,
+    initPayload: PropTypes.func,
+    loadUserData: PropTypes.func,
+    initUserData: PropTypes.func,
     loadJs: PropTypes.func,
     loadCss: PropTypes.func,
     cacheJs: PropTypes.bool,
@@ -199,7 +199,7 @@ FetchSwitch.propTypes = {
 
 FetchSwitch.defaultProps = {
     childLimit: 1,
-    getPayload: (matchObject) => matchObject.payload,
+    extractPayload: (matchObject) => matchObject.payload,
     extractJsPath: '{payload}.js',
     extractCssPath: '{payload}.css'
 };

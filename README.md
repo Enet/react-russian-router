@@ -129,11 +129,11 @@ This switch is designed for getting components to be rendered asynchronously. It
 
 But `AsyncSwitch` doesn't know about the network, scripts and styles, it only allows to extract your component from `matchObject` inside the promise. If you use SSR with the switch, take a look at the prop `initialPayload`.
 
-#### `getPayloadPromise(matchObject)` : func = `(matchObject) => Promise.resolve(matchObject.payload)`
+#### `loadPayload(matchObject)` : func = `(matchObject) => Promise.resolve(matchObject.payload)`
 Asynchronous getter for payload by original `matchObject` from the routes' table. It must return promise!
 
-#### `getInitialPayload(matchObject)` : func = `null`
-Synchronous getter for first payload to avoid flash of content after SSR. If SSR isn't used, you don't need this prop.
+#### `initPayload(matchObject)` : func = `null`
+Synchronous getter for the first payload to avoid flash of content after SSR. If SSR isn't used, you don't need this prop.
 
 #### `spinnerComponent` : node = `null`
 Component to render a spinner, when `AsyncSwitch` is waiting for payload.
@@ -165,7 +165,7 @@ This is the switch, which loads all the resources, required to render a new entr
 3. When the resources are ready to use, it gets payload synchronously.
 4. Renders payload.
 
-Despite of the complexity, `FetchSwitch` is a very flexible component. You can replace any step and adapt the switch for your own needs. If you use SSR, take a look at the props `getInitialPayload` and `getInitialUserData`.
+Despite of the complexity, `FetchSwitch` is a very flexible component. You can replace any step and adapt the switch for your own needs. If you use SSR, take a look at the props `initPayload` and `initUserData`.
 
 #### `extractJsPath(matchObject)` : string or func = `{payload}.js`
 Function to generate path to JS code by `matchObject`. Also string can be passed. Placeholders `{payload}`, `{payload.abc}`, `{payload.Abc}` and `{payload.ABC}` will be replaced with `matchObject.payload` in different letter cases.
@@ -185,13 +185,13 @@ Custom loader for JS code. It must return a promise, resolved by string, which i
 #### `loadCss(matchObject, filePath)` : func = `null`
 Custom loader for CSS code like `loadJs` (read above).
 
-#### `getPayload(matchObject)` : func = `(matchObject) => matchObject.payload`
-Synchronous getter for payload by original `matchObject` from the routes' table. It must return payload, not the promise! Use this method instead of `getPayloadPromise`.
+#### `extractPayload(matchObject)` : func = `(matchObject) => matchObject.payload`
+Synchronous getter for payload by original `matchObject` from the routes' table. It must return payload, not the promise! Use this method instead of `loadPayload`.
 
-#### `getUserDataPromise(matchObject)` : func = `null`
+#### `loadUserData(matchObject)` : func = `null`
 Asynchronous loader of custom user data, that is connected with entry point. It must return a promise, resolved by any data. That data will be passed as prop `userData` to the rendered component.
 
-#### `getInitialUserData(matchObject)` : func = `null`
+#### `initUserData(matchObject)` : func = `null`
 Synchronous loader of custom user data for first render to avoid flash of content after SSR. If SSR isn't used, you don't need this prop.
 
 ## :strawberry: `ServerSwitch extends Switch`
