@@ -1,0 +1,37 @@
+.app {
+    font-size: 24px;
+}
+
+.app__navigation {
+    position: relative;
+    height: 50px;
+    line-height: 50px;
+    border-bottom: 2px blue solid;
+    z-index: 1;
+}
+
+.app__container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.app__container > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    padding-top: 50px;
+}
+
+.app__link {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.app__link.matched {
+    color: red;
+}

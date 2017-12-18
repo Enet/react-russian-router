@@ -1,0 +1,8 @@
+.app {
+    font-size: 24px;
+}
+
+.app__link {
+    display: inline-block;
+    margin-right: 10px;
+}
