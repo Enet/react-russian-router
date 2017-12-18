@@ -72,7 +72,7 @@ export default class TransitionSwitch extends Switch {
             Infinity;
         const contentNodes = matchObjects
             .slice(0, Math.max(0, childLimit))
-            .filter((matchObject) => !!matchObject.payload)
+            .filter((matchObject) => !!matchObject.payload || !!matchObject.error)
             .map((matchObject) => this.renderPayload(matchObject));
 
         if (matchObjects === this.state.matchObjects && !contentNodes.length) {
@@ -182,7 +182,7 @@ export default class TransitionSwitch extends Switch {
                 this._routeIds[routeName] = 1;
             }
             const objectIndex = prevMatchObjects.findIndex((prevMatchObject) => prevMatchObject.name === routeName);
-            if (objectIndex === -1) {
+            if (objectIndex === -1 || prevMatchObjects[objectIndex].key !== matchObject.key) {
                 matchKeys.push(matchObject.key + '~' + router.getNavigationKey());
             } else {
                 matchKeys.push(prevMatchKeys[objectIndex]);

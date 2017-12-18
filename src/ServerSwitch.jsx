@@ -14,6 +14,15 @@ export default class ServerSwitch extends Switch {
         }
     }
 
+    _extractPayloadProps (matchObject) {
+        const payloadProps = super._extractPayloadProps(matchObject);
+        const {userData} = this.props;
+        if (userData) {
+            payloadProps.userData = userData;
+        }
+        return payloadProps;
+    }
+
     _onUriChange () {
         const matchObjects = this._getMatchObjects();
         this.state.matchObjects = matchObjects;
@@ -22,5 +31,6 @@ export default class ServerSwitch extends Switch {
 
 ServerSwitch.contextTypes = {
     router: PropTypes.instanceOf(UniversalRussianRouter).isRequired,
-    feedback: PropTypes.object
+    feedback: PropTypes.object,
+    userData: PropTypes.object
 };

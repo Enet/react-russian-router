@@ -129,10 +129,10 @@ This switch is designed for getting components to be rendered asynchronously. It
 
 But `AsyncSwitch` doesn't know about the network, scripts and styles, it only allows to extract your component from `matchObject` inside the promise. If you use SSR with the switch, take a look at the prop `initialPayload`.
 
-#### `getPayload(matchObject)` : func = `(matchObject) => Promise.resolve(matchObject.payload)`
+#### `getPayloadPromise(matchObject)` : func = `(matchObject) => Promise.resolve(matchObject.payload)`
 Asynchronous getter for payload by original `matchObject` from the routes' table. It must return promise!
 
-#### `initialPayload(matchObject)` : func = `null`
+#### `getInitialPayload(matchObject)` : func = `null`
 Synchronous getter for first payload to avoid flash of content after SSR. If SSR isn't used, you don't need this prop.
 
 #### `spinnerComponent` : node = `null`
@@ -151,10 +151,10 @@ Min time of waiting for payload. It's recommended for use together with `spinner
 Max time of waiting for payload. Then an error will be thrown.
 
 #### `onWaitStart({type, matchObjects})` : func = `null`
-Callback, called when waiting for payload has started.
+Callback, called when waiting for payload has been started.
 
 #### `onWaitEnd({type, matchObjects})` : func = `null`
-Callback, called when waiting for payload has ended.
+Callback, called when waiting for payload has been ended.
 
 ## :grapes: `FetchSwitch extends AsyncSwitch`
 This is the switch, which loads all the resources, required to render a new entry point. It works like a charm:
@@ -162,10 +162,10 @@ This is the switch, which loads all the resources, required to render a new entr
 2. Loads all the resources in parallel.
     - Looks for cached JS and CSS files or loads files using `fetch`.
     - Loads user's data.
-3. When the resources are ready to use, it gets payload asynchronously.
+3. When the resources are ready to use, it gets payload synchronously.
 4. Renders payload.
 
-Despite of the complexity, `FetchSwitch` is a very flexible component. You can replace any step and adapt the switch for your own needs. If you use SSR, take a look at the props `initialPayload` and `initialUserData`.
+Despite of the complexity, `FetchSwitch` is a very flexible component. You can replace any step and adapt the switch for your own needs. If you use SSR, take a look at the props `getInitialPayload` and `getInitialUserData`.
 
 #### `extractJsPath(matchObject)` : string or func = `{payload}.js`
 Function to generate path to JS code by `matchObject`. Also string can be passed. Placeholders `{payload}`, `{payload.abc}`, `{payload.Abc}` and `{payload.ABC}` will be replaced with `matchObject.payload` in different letter cases.
@@ -185,10 +185,13 @@ Custom loader for JS code. It must return a promise, resolved by string, which i
 #### `loadCss(matchObject, filePath)` : func = `null`
 Custom loader for CSS code like `loadJs` (read above).
 
-#### `loadUserData(matchObject)` : func = `null`
+#### `getPayload(matchObject)` : func = `(matchObject) => matchObject.payload`
+Synchronous getter for payload by original `matchObject` from the routes' table. It must return payload, not the promise! Use this method instead of `getPayloadPromise`.
+
+#### `getUserDataPromise(matchObject)` : func = `null`
 Asynchronous loader of custom user data, that is connected with entry point. It must return a promise, resolved by any data. That data will be passed as prop `userData` to the rendered component.
 
-#### `initialUserData(matchObject)` : func = `null`
+#### `getInitialUserData(matchObject)` : func = `null`
 Synchronous loader of custom user data for first render to avoid flash of content after SSR. If SSR isn't used, you don't need this prop.
 
 ## :strawberry: `ServerSwitch extends Switch`

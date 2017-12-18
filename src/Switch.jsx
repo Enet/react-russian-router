@@ -32,7 +32,7 @@ export default class Switch extends React.PureComponent {
     renderContent (matchObjects) {
         const contentNodes = matchObjects
             .slice(0, Math.max(0, this.props.childLimit))
-            .filter((matchObject) => !!matchObject.payload)
+            .filter((matchObject) => !!matchObject.payload || !!matchObject.error)
             .map((matchObject) => this.renderPayload(matchObject));
         if (!contentNodes.length) {
             throw new Error('Switch cannot render matchObjects!');

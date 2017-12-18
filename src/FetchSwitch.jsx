@@ -34,11 +34,11 @@ export default class FetchSwitch extends AsyncSwitch {
 
     _matchObjectToInitial (matchObject, optionalMaps) {
         let userData;
-        if (this.props.initialUserData) {
-            userData = this.props.initialUserData(matchObject);
+        if (this.props.getInitialUserData) {
+            userData = this.props.getInitialUserData(matchObject);
             optionalMaps[1].set(matchObject, userData);
         }
-        const payload = this.props.initialPayload(matchObject, userData);
+        const payload = this.props.getInitialPayload(matchObject, userData);
         optionalMaps[0].set(matchObject, payload);
         return matchObject;
     }
@@ -60,12 +60,9 @@ export default class FetchSwitch extends AsyncSwitch {
 
         return Promise.all([cssCodePromise, jsCodePromise, userDataPromise])
             .then(([cssCode, jsCode, userData]) => {
-                const payload = this.props.getPayload(matchObject, userData);
-                return Promise.all([cssCode, jsCode, userData, payload]);
-            })
-            .then(([cssCode, jsCode, userData, payload]) => {
                 this._appendCss(cssCode, matchObject, userData);
                 this._appendJs(jsCode, matchObject, userData);
+                const payload = this.props.getPayload(matchObject, userData);
                 optionalMaps[0].set(matchObject, payload);
                 optionalMaps[1].set(matchObject, userData);
                 return matchObject;
@@ -85,8 +82,10 @@ export default class FetchSwitch extends AsyncSwitch {
                     .replace(/{payload\.ABC}/g, payload.toUpperCase())
                     .replace(/{payload\.Abc}/g, payload.substr(0, 1).toUpperCase() + payload.substr(1).toLowerCase());
             }
-        } else {
+        } else if (pathExtractor) {
             filePath = pathExtractor(matchObject);
+        } else {
+            filePath = '';
         }
 
         const cacheStorage = this['_cached' + language];
@@ -117,10 +116,10 @@ export default class FetchSwitch extends AsyncSwitch {
     }
 
     _getUserDataPromise (matchObject) {
-        if (!this.props.loadUserData) {
+        if (!this.props.getUserDataPromise) {
             return Promise.resolve(null);
         }
-        return this.props.loadUserData(matchObject);
+        return this.props.getUserDataPromise(matchObject);
     }
 
     _appendCss (cssCode, matchObject, userData) {
@@ -164,14 +163,21 @@ export default class FetchSwitch extends AsyncSwitch {
         jsNode.innerHTML = jsCode;
         document.head.appendChild(jsNode);
     }
+
+    _throwError () {
+        super._throwError(...arguments);
+        const matchObject = this.state.matchObjects[0];
+        this._appendJs(null, matchObject);
+        this._appendCss(null, matchObject);
+    }
 }
 
 FetchSwitch.propTypes = {
     childLimit: PropTypes.number,
     getPayload: PropTypes.func.isRequired,
-    initialPayload: PropTypes.func,
-    loadUserData: PropTypes.func,
-    initialUserData: PropTypes.func,
+    getInitialPayload: PropTypes.func,
+    getUserDataPromise: PropTypes.func,
+    getInitialUserData: PropTypes.func,
     loadJs: PropTypes.func,
     loadCss: PropTypes.func,
     cacheJs: PropTypes.bool,
@@ -193,7 +199,7 @@ FetchSwitch.propTypes = {
 
 FetchSwitch.defaultProps = {
     childLimit: 1,
-    getPayload: (matchObject) => Promise.resolve(matchObject),
+    getPayload: (matchObject) => matchObject.payload,
     extractJsPath: '{payload}.js',
     extractCssPath: '{payload}.css'
 };

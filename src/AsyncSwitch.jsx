@@ -24,15 +24,16 @@ export default class AsyncSwitch extends Switch {
     }
 
     componentWillMount () {
-        const {getPayload} = this.props;
-        if (getPayload === AsyncSwitch.defaultProps.getPayload) {
+        const {getPayloadPromise} = this.props;
+        if (getPayloadPromise === AsyncSwitch.defaultProps.getPayloadPromise) {
             // eslint-disable-next-line
-            console.warn('You didn\'t provide getPayload function. Most likely it means that you don\'t need AsyncSwitch.');
+            console.warn('You didn\'t provide getPayloadPromise function. Most likely it means that you don\'t need AsyncSwitch.');
         }
 
         this._prevMatchObjects = this.state.matchObjects;
         this._payloadMap = new Map();
         this._prevPayloadMap = this._payloadMap;
+        this._catchedError = this.props.initialError;
         super.componentWillMount();
     }
 
@@ -123,7 +124,7 @@ export default class AsyncSwitch extends Switch {
     }
 
     _matchObjectToInitial (matchObject, optionalMaps) {
-        const payload = this.props.initialPayload(matchObject);
+        const payload = this.props.getInitialPayload(matchObject);
         optionalMaps[0].set(matchObject, payload);
         return matchObject;
     }
@@ -137,17 +138,19 @@ export default class AsyncSwitch extends Switch {
             .map((matchObject) => this._matchObjectToPromise(matchObject, optionalMaps));
         const minWaitTimePromises = [Promise.all(matchObjectPromises)];
         const minWaitTime = +this.props.minWaitTime;
+        let minWaitTimer;
         if (minWaitTime > 0) {
             minWaitTimePromises.push(new Promise((resolve, reject) => {
-                setTimeout(resolve, minWaitTime);
+                minWaitTimer = setTimeout(resolve, minWaitTime);
             }));
         }
 
         const maxWaitTimePromises = [Promise.all(minWaitTimePromises).then(([a, b]) => a)];
         const maxWaitTime = +this.props.maxWaitTime;
+        let maxWaitTimer;
         if (maxWaitTime > 0) {
             maxWaitTimePromises.push(new Promise((resolve, reject) => {
-                setTimeout(() => {
+                maxWaitTimer = setTimeout(() => {
                     reject('Max waiting time has expired!');
                 }, maxWaitTime);
             }));
@@ -155,24 +158,37 @@ export default class AsyncSwitch extends Switch {
 
         return Promise.race(maxWaitTimePromises)
             .then((matchObjects) => {
+                clearTimeout(minWaitTimer);
+                clearTimeout(maxWaitTimer);
                 this._prevPayloadMap = this._payloadMap;
                 this._payloadMap = optionalMaps[0];
                 return matchObjects;
+            })
+            .catch((error) => {
+                clearTimeout(minWaitTimer);
+                clearTimeout(maxWaitTimer);
+                throw error;
             });
     }
 
     _matchObjectToPromise (matchObject, optionalMaps) {
-        return this.props.getPayload(matchObject)
+        return this.props.getPayloadPromise(matchObject)
             .then((payload) => {
                 optionalMaps[0].set(matchObject, payload);
                 return matchObject;
             });
     }
 
+    _throwError () {
+        this.state.isWaiting = false;
+        this._initSwitch();
+        super._throwError(...arguments);
+    }
+
     _onUriChange () {
         const matchObjects = this._getMatchObjects()
             .slice(0, Math.max(0, this.props.childLimit))
-            .filter((matchObject) => !!matchObject.payload);
+            .filter((matchObject) => !!matchObject.payload || !!matchObject.error);
         const navigationKey = this._getNavigationKey();
 
         // Loop below looks for declarative redirects (from routes' table) and executes them
@@ -196,7 +212,7 @@ export default class AsyncSwitch extends Switch {
 
         const payloadMap = new Map();
 
-        if (this.state.isInited || !this.props.initialPayload) {
+        if (this.state.isInited || !this.props.getInitialPayload) {
             this._getAsyncPayload(matchObjects, payloadMap)
                 .then(this._onPayloadResolve.bind(this, navigationKey))
                 .catch(this._onPayloadReject.bind(this, navigationKey));
@@ -205,7 +221,12 @@ export default class AsyncSwitch extends Switch {
         const isWaiting = true;
         this.setState({isWaiting});
 
-        if (!this.state.isInited && this.props.initialPayload) {
+        this._emitUriChange(matchObjects);
+        const {onWaitStart} = this.props;
+        const type = 'waitstart';
+        onWaitStart && onWaitStart({type, matchObjects});
+
+        if (!this.state.isInited && this.props.getInitialPayload) {
             try {
                 const initialMatchObjects = this._getInitialPayload(matchObjects, payloadMap);
                 this.state.isInited = true;
@@ -214,11 +235,6 @@ export default class AsyncSwitch extends Switch {
                 this._onPayloadReject(navigationKey, error);
             }
         }
-
-        this._emitUriChange(matchObjects);
-        const {onWaitStart} = this.props;
-        const type = 'waitstart';
-        onWaitStart && onWaitStart({type, matchObjects});
     }
 
     _onPayloadResolve (navigationKey, matchObjects) {
@@ -242,17 +258,21 @@ export default class AsyncSwitch extends Switch {
             return;
         }
 
-        this.state.isWaiting = false;
         this._catchedError = error;
         this._matchError = (error || '') + '';
         this._throwError();
+
+        const {matchObjects} = this.state;
+        const {onWaitEnd} = this.props;
+        const type = 'waitend';
+        onWaitEnd && onWaitEnd({type, matchObjects});
     }
 }
 
 AsyncSwitch.propTypes = {
     childLimit: PropTypes.number,
-    getPayload: PropTypes.func.isRequired,
-    initialPayload: PropTypes.func,
+    getPayloadPromise: PropTypes.func.isRequired,
+    getInitialPayload: PropTypes.func,
     errorComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     initialError: PropTypes.any,
     spinnerComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
@@ -268,7 +288,7 @@ AsyncSwitch.propTypes = {
 
 AsyncSwitch.defaultProps = {
     childLimit: 1,
-    getPayload: (matchObject) => Promise.resolve(matchObject.payload),
+    getPayloadPromise: (matchObject) => Promise.resolve(matchObject.payload),
     minWaitTime: 0,
     maxWaitTime: 60000
 };
