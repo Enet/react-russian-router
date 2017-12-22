@@ -1,6 +1,6 @@
 {
   "name": "react-russian-router",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Universal javascript react-router for browser and server environments",
   "main": "lib/index.js",
   "author": "Stepan Zhevak <enet@protonmail.ch> (https://zhevak.name/)",
@@ -47,8 +47,8 @@
   },
   "dependencies": {
     "prop-types": "^15.6.0",
-    "browser-russian-router": "^0.0.2",
-    "server-russian-router": "^0.0.2"
+    "browser-russian-router": "^0.0.3",
+    "server-russian-router": "^0.0.3"
   },
   "scripts": {
     "clean": "npm run clean:lib && npm run clean:dist",
