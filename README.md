@@ -252,7 +252,7 @@ Action, executed with the history when the redirect is occured.
 It's the same `Redirect`, which uses its own props as parameters to generate uri.
 
 # :two: Examples
-All examples could be found in [`examples`](https://github.com/Enet/react-russian-router/tree/master/examples) directory.
+All examples could be found in [`examples`](https://github.com/Enet/react-russian-router/tree/master/examples) directory. Tests will be later, but be sure the coverage of [russian-router](https://github.com/Enet/russian-router), [browser-russian-router](https://github.com/Enet/browser-russian-router) and [server-russian-router](https://github.com/Enet/server-russian-router) is 100%.
 ```sh
 git clone git@github.com:Enet/react-russian-router.git
 cd react-russian-router/examples/Switch
