@@ -1,4 +1,9 @@
 # :ru: react-russian-router :atom:
+
+[![npm version](https://img.shields.io/npm/v/react-russian-router.svg)](https://www.npmjs.com/package/react-russian-router)
+[![gzip size](http://img.badgesize.io/https://npmcdn.com/react-russian-router/dist/react-russian-router.min.js?compression=gzip)](https://npmcdn.com/react-russian-router/dist/react-russian-router.min.js?compression=gzip)
+[![stepan zhevak](https://img.shields.io/badge/stepan-zhevak-1a8b8e.svg)](https://zhevak.name)
+
 Here is the isomorphic/universal react router based on [russian-router](https://github.com/Enet/russian-router), [browser-russian-router](https://github.com/Enet/browser-russian-router) and [server-russian-router](https://github.com/Enet/server-russian-router) both for server and browser environments.
 
 It allows you to manage routing in complex universal SPA and earn a lot of money.
