@@ -1,5 +1,7 @@
 # :ru: react-russian-router :atom:
 
+<img src="https://raw.githubusercontent.com/Enet/react-russian-router/master/react-russian-router.svg?sanitize=true" width="210" height="210" />
+
 [![npm version](https://img.shields.io/npm/v/react-russian-router.svg)](https://www.npmjs.com/package/react-russian-router)
 [![gzip size](http://img.badgesize.io/https://npmcdn.com/react-russian-router/dist/react-russian-router.min.js?compression=gzip)](https://npmcdn.com/react-russian-router/dist/react-russian-router.min.js?compression=gzip)
 [![stepan zhevak](https://img.shields.io/badge/stepan-zhevak-1a8b8e.svg)](https://zhevak.name)
